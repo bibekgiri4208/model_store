@@ -2,22 +2,87 @@
 require_once 'config/db.php';
 include 'includes/header.php';
 
-// Filter by category slug if set
-$cat_slug = $_GET['category'] ?? '';
-if ($cat_slug) {
-    $stmt = $pdo->prepare("SELECT p.*, c.name as category_name FROM products p JOIN categories c ON p.category_id = c.id WHERE c.slug = ? ORDER BY p.id DESC");
-    $stmt->execute([$cat_slug]);
-} else {
-    $stmt = $pdo->query("SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id ORDER BY p.id DESC");
+// Capture Search and Filter parameters
+$search = trim($_GET['q'] ?? '');
+$scale = trim($_GET['scale'] ?? '');
+$category = trim($_GET['category'] ?? '');
+
+// Fetch active categories for the filter dropdown
+$categories_stmt = $pdo->query("SELECT * FROM categories ORDER BY name ASC");
+$all_categories = $categories_stmt->fetchAll();
+
+// Dynamic Query Builder
+$sql = "SELECT p.*, c.name as category_name 
+        FROM products p 
+        LEFT JOIN categories c ON p.category_id = c.id 
+        WHERE 1=1";
+$params = [];
+
+if (!empty($search)) {
+    $sql .= " AND (p.title LIKE ? OR p.description LIKE ?)";
+    $params[] = "%{$search}%";
+    $params[] = "%{$search}%";
 }
+
+if (!empty($scale)) {
+    $sql .= " AND p.scale = ?";
+    $params[] = $scale;
+}
+
+if (!empty($category)) {
+    $sql .= " AND c.slug = ?";
+    $params[] = $category;
+}
+
+$sql .= " ORDER BY p.id DESC";
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
 $products = $stmt->fetchAll();
 ?>
 
 <style>
-    .hero-section { padding: 60px 24px 40px; max-width: 1200px; margin: 0 auto; border-bottom: 1px solid var(--border-color); }
+    .hero-section { padding: 48px 24px 32px; max-width: 1200px; margin: 0 auto; }
     .hero-section h1 { font-size: 32px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 8px; }
     .hero-section p { color: var(--text-muted); font-size: 15px; max-width: 500px; font-weight: 300; }
 
+    /* Filter Bar Styling */
+    .filter-bar { max-width: 1200px; margin: 0 auto; padding: 0 24px 32px; border-bottom: 1px solid var(--border-color); }
+    .filter-form { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+    .filter-input, .filter-select {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        padding: 10px 14px;
+        border-radius: 6px;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.15s ease;
+    }
+    .filter-input { flex-grow: 1; min-width: 220px; }
+    .filter-input:focus, .filter-select:focus { border-color: var(--border-light); }
+    
+    .btn-filter {
+        background: var(--text-primary);
+        color: var(--bg-main);
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .btn-reset {
+        color: var(--text-muted);
+        font-size: 13px;
+        text-decoration: none;
+        padding: 10px 12px;
+        transition: color 0.15s ease;
+    }
+    .btn-reset:hover { color: var(--text-primary); }
+
+    /* Catalog Grid */
     .catalog-container { max-width: 1200px; margin: 0 auto; padding: 48px 24px 96px; }
     .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 32px; }
     
@@ -31,7 +96,6 @@ $products = $stmt->fetchAll();
         color: inherit; 
         display: flex; 
         flex-direction: column; 
-        cursor: pointer;
     }
     .product-card:hover { border-color: var(--border-light); transform: translateY(-3px); }
 
@@ -55,26 +119,59 @@ $products = $stmt->fetchAll();
     <p>Precision-engineered diecast and resin miniatures for collector purists.</p>
 </section>
 
+<!-- Search & Filter Controls -->
+<div class="filter-bar">
+    <form method="GET" action="index.php" class="filter-form">
+        <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Search models (e.g., Porsche, GT3)..." class="filter-input">
+        
+        <select name="scale" class="filter-select">
+            <option value="">All Scales</option>
+            <option value="1:18" <?= $scale === '1:18' ? 'selected' : '' ?>>1:18 Scale</option>
+            <option value="1:43" <?= $scale === '1:43' ? 'selected' : '' ?>>1:43 Scale</option>
+            <option value="1:64" <?= $scale === '1:64' ? 'selected' : '' ?>>1:64 Scale</option>
+        </select>
+
+        <select name="category" class="filter-select">
+            <option value="">All Categories</option>
+            <?php foreach ($all_categories as $cat): ?>
+                <option value="<?= htmlspecialchars($cat['slug']) ?>" <?= $category === $cat['slug'] ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($cat['name']) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+
+        <button type="submit" class="btn-filter">Filter</button>
+
+        <?php if (!empty($search) || !empty($scale) || !empty($category)): ?>
+            <a href="index.php" class="btn-reset">Reset Filters</a>
+        <?php endif; ?>
+    </form>
+</div>
+
 <main class="catalog-container">
-    <div class="product-grid">
-        <?php foreach ($products as $product): ?>
-            <a href="product.php?id=<?= $product['id'] ?>" class="product-card">
-                <div class="image-wrapper">
-                    <span class="badge-scale"><?= htmlspecialchars($product['scale'] ?? '1:18') ?></span>
-                    <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['title']) ?>" loading="lazy">
-                </div>
-                <div class="card-content">
-                    <span class="category-label"><?= htmlspecialchars($product['category_name'] ?? 'Scale Model') ?></span>
-                    <h2 class="product-title"><?= htmlspecialchars($product['title']) ?></h2>
-                    <div class="card-footer">
-                        <span class="price"><?= format_price($product['price']) ?></span>
-                        <span class="stock-status"><?= $product['stock'] > 0 ? $product['stock'] . ' available' : 'Out of stock' ?></span>
+    <?php if (empty($products)): ?>
+        <p style="color: var(--text-muted);">No scale models matched your query.</p>
+    <?php else: ?>
+        <div class="product-grid">
+            <?php foreach ($products as $product): ?>
+                <a href="product.php?id=<?= $product['id'] ?>" class="product-card">
+                    <div class="image-wrapper">
+                        <span class="badge-scale"><?= htmlspecialchars($product['scale'] ?? '1:18') ?></span>
+                        <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['title']) ?>" loading="lazy">
                     </div>
-                </div>
-            </a>
-        <?php endforeach; ?>
-    </div>
+                    <div class="card-content">
+                        <span class="category-label"><?= htmlspecialchars($product['category_name'] ?? 'Scale Model') ?></span>
+                        <h2 class="product-title"><?= htmlspecialchars($product['title']) ?></h2>
+                        <div class="card-footer">
+                            <span class="price"><?= format_price($product['price']) ?></span>
+                            <span class="stock-status"><?= $product['stock'] > 0 ? $product['stock'] . ' available' : 'Out of stock' ?></span>
+                        </div>
+                    </div>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 </main>
 
 </body>
-</html> 
+</html>
