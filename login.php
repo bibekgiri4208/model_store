@@ -4,9 +4,19 @@ require_once 'config/db.php';
 
 $error = '';
 
+// Optional safe redirect target (e.g. returning to checkout after login)
+$redirect = trim($_GET['redirect'] ?? '');
+if (!empty($redirect) && !preg_match('#^[a-zA-Z0-9_\-./?&=:%+]+$#', $redirect)) {
+    $redirect = '';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
+    $redirect = trim($_POST['redirect'] ?? '');
+    if (!empty($redirect) && !preg_match('#^[a-zA-Z0-9_\-./?&=:%+]+$#', $redirect)) {
+        $redirect = '';
+    }
 
     if (!empty($email) && !empty($password)) {
         $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
@@ -22,6 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Redirect based on role
             if ($_SESSION['role'] === 'admin') {
                 header('Location: admin/dashboard.php');
+                exit;
+            } elseif (!empty($redirect)) {
+                header('Location: ' . $redirect);
                 exit;
             } else {
                 header('Location: index.php');
@@ -44,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/style.css?v=3">
+    <link rel="stylesheet" href="assets/css/style.css?v=4">
     <script src="assets/js/app.js" defer></script>
 </head>
 <body class="auth-page">
@@ -56,6 +69,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
     <form action="login.php" method="POST">
+        <?php if (!empty($redirect)): ?>
+            <input type="hidden" name="redirect" value="<?= htmlspecialchars($redirect) ?>">
+        <?php endif; ?>
         <div class="form-group">
             <label>Email Address</label>
             <input type="email" name="email" required placeholder="you@example.com">

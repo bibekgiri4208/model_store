@@ -7,34 +7,47 @@ $search   = trim($_GET['q'] ?? '');
 $scale    = trim($_GET['scale'] ?? '');
 $category = trim($_GET['category'] ?? '');
 
+// Pagination
+$per_page = 6;
+$page     = max(1, (int)($_GET['page'] ?? 1));
+
 // Fetch active categories for the filter dropdown
 $categories_stmt = $pdo->query("SELECT * FROM categories ORDER BY name ASC");
 $all_categories  = $categories_stmt->fetchAll();
 
 // Dynamic Query Builder
-$sql = "SELECT p.*, c.name as category_name 
-        FROM products p 
+$base_sql = "FROM products p 
         LEFT JOIN categories c ON p.category_id = c.id 
         WHERE 1=1";
 $params = [];
 
 if (!empty($search)) {
-    $sql .= " AND (p.title LIKE ? OR p.description LIKE ?)";
+    $base_sql .= " AND (p.title LIKE ? OR p.description LIKE ?)";
     $params[] = "%{$search}%";
     $params[] = "%{$search}%";
 }
 
 if (!empty($scale)) {
-    $sql .= " AND p.scale = ?";
+    $base_sql .= " AND p.scale = ?";
     $params[] = $scale;
 }
 
 if (!empty($category)) {
-    $sql .= " AND c.slug = ?";
+    $base_sql .= " AND c.slug = ?";
     $params[] = $category;
 }
 
-$sql .= " ORDER BY p.id DESC";
+// Count total matching products (for pagination)
+$count_stmt = $pdo->prepare("SELECT COUNT(*) " . $base_sql);
+$count_stmt->execute($params);
+$total_products = (int)$count_stmt->fetchColumn();
+
+$total_pages = max(1, (int)ceil($total_products / $per_page));
+$page = min($page, $total_pages);
+$offset = ($page - 1) * $per_page;
+
+// Fetch current page of products
+$sql = "SELECT p.*, c.name as category_name " . $base_sql . " ORDER BY p.id DESC LIMIT $per_page OFFSET $offset";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
@@ -116,6 +129,42 @@ $products = $stmt->fetchAll();
                 </div>
             <?php endforeach; ?>
         </div>
+
+        <?php if ($total_pages > 1): ?>
+            <?php
+            $qs = [];
+            if (!empty($search))   $qs['q'] = $search;
+            if (!empty($scale))    $qs['scale'] = $scale;
+            if (!empty($category)) $qs['category'] = $category;
+            $page_url = function($p) use ($qs) {
+                return 'index.php?' . http_build_query(array_merge($qs, ['page' => $p]));
+            };
+            ?>
+            <nav class="pagination" aria-label="Catalog pages">
+                <?php if ($page > 1): ?>
+                    <a class="page-btn" href="<?= htmlspecialchars($page_url($page - 1)) ?>">&#8592; Prev</a>
+                <?php else: ?>
+                    <span class="page-btn page-btn-disabled">&#8592; Prev</span>
+                <?php endif; ?>
+
+                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                    <?php if ($i === $page): ?>
+                        <span class="page-btn page-btn-active"><?= $i ?></span>
+                    <?php else: ?>
+                        <a class="page-btn" href="<?= htmlspecialchars($page_url($i)) ?>"><?= $i ?></a>
+                    <?php endif; ?>
+                <?php endfor; ?>
+
+                <?php if ($page < $total_pages): ?>
+                    <a class="page-btn" href="<?= htmlspecialchars($page_url($page + 1)) ?>">Next &#8594;</a>
+                <?php else: ?>
+                    <span class="page-btn page-btn-disabled">Next &#8594;</span>
+                <?php endif; ?>
+            </nav>
+            <p class="pagination-info">
+                Showing <?= $offset + 1 ?>–<?= min($offset + $per_page, $total_products) ?> of <?= $total_products ?> models
+            </p>
+        <?php endif; ?>
     <?php endif; ?>
 </main>
 

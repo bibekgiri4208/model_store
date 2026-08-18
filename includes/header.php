@@ -17,6 +17,16 @@ $base_path = '';
 if (strpos($current_page, 'admin') !== false) {
     $base_path = '../';
 }
+
+// Categories for the navbar dropdown
+$nav_categories = [];
+if (isset($pdo)) {
+    try {
+        $nav_categories = $pdo->query("SELECT name, slug FROM categories ORDER BY name ASC")->fetchAll();
+    } catch (Exception $e) {
+        $nav_categories = [];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -26,8 +36,8 @@ if (strpos($current_page, 'admin') !== false) {
     <title>Apex Scale Models</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= $base_path ?>assets/css/style.css?v=3">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= $base_path ?>assets/css/style.css?v=4">
     <script src="<?= $base_path ?>assets/js/app.js" defer></script>
 </head>
 <body>
@@ -36,15 +46,49 @@ if (strpos($current_page, 'admin') !== false) {
     <div class="header-inner">
         <a href="<?= $base_path ?>index.php" class="brand-logo">
             <span class="brand-mark" aria-hidden="true">A</span>
-            <span class="brand-text">Apex Models</span>
+            <span class="brand-text">
+                Apex
+                <span class="brand-sub">Scale Models</span>
+            </span>
         </a>
 
         <button class="nav-toggle" aria-label="Toggle navigation">&#9776;</button>
 
         <nav class="main-nav">
-            <a href="<?= $base_path ?>index.php" class="nav-link <?= $current_page === 'index.php' || $current_page === 'product.php' ? 'active' : '' ?>">Catalog</a>
+            <div class="nav-menu">
+                <a href="<?= $base_path ?>index.php" class="nav-link <?= $current_page === 'index.php' || $current_page === 'product.php' ? 'active' : '' ?>">Catalog</a>
 
-            <a href="<?= $base_path ?>cart.php" class="nav-link <?= $current_page === 'cart.php' ? 'active' : '' ?>">
+                <?php if (!empty($nav_categories)): ?>
+                    <div class="nav-dropdown">
+                        <button type="button" class="nav-link nav-dropdown-toggle" aria-haspopup="true" aria-expanded="false">
+                            Categories
+                            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <div class="nav-dropdown-menu">
+                            <a href="<?= $base_path ?>index.php">All Models</a>
+                            <?php foreach ($nav_categories as $cat): ?>
+                                <a href="<?= $base_path ?>index.php?category=<?= htmlspecialchars($cat['slug']) ?>"><?= htmlspecialchars($cat['name']) ?></a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    <a href="<?= $base_path ?>my-orders.php" class="nav-link <?= $current_page === 'my-orders.php' ? 'active' : '' ?>">My Orders</a>
+                <?php endif; ?>
+            </div>
+
+            <form class="nav-search" action="<?= $base_path ?>index.php" method="GET" role="search">
+                <svg class="nav-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="search" name="q" placeholder="Search models..." value="<?= htmlspecialchars(trim($_GET['q'] ?? '')) ?>" aria-label="Search models">
+            </form>
+
+            <a href="<?= $base_path ?>cart.php" class="nav-link nav-cart <?= $current_page === 'cart.php' ? 'active' : '' ?>">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <circle cx="9" cy="21" r="1"></circle>
                     <circle cx="20" cy="21" r="1"></circle>

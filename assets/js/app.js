@@ -138,6 +138,35 @@
         });
     }
 
+    /* --- Categories dropdown (click toggle, mobile friendly) --- */
+    function initNavDropdown() {
+        var dropdowns = document.querySelectorAll('.nav-dropdown');
+        dropdowns.forEach(function(dd) {
+            var toggle = dd.querySelector('.nav-dropdown-toggle');
+            if (!toggle) return;
+
+            toggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropdowns.forEach(function(other) {
+                    if (other !== dd) other.classList.remove('open');
+                });
+                dd.classList.toggle('open');
+                toggle.setAttribute('aria-expanded', dd.classList.contains('open'));
+            });
+        });
+
+        document.addEventListener('click', function(e) {
+            dropdowns.forEach(function(dd) {
+                if (!dd.contains(e.target)) {
+                    dd.classList.remove('open');
+                    var t = dd.querySelector('.nav-dropdown-toggle');
+                    if (t) t.setAttribute('aria-expanded', 'false');
+                }
+            });
+        });
+    }
+
     /* --- Header shadow on scroll --- */
     function initHeaderScroll() {
         var header = document.querySelector('.site-header');
@@ -159,6 +188,7 @@
 
     function init() {
         initMobileNav();
+        initNavDropdown();
         initHeaderScroll();
         initCartToast();
         initScrollAnimations();

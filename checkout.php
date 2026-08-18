@@ -2,6 +2,16 @@
 require_once 'config/db.php';
 include 'includes/header.php';
 
+// Require login to check out
+if (!isset($_SESSION['user_id'])) {
+    $redirect = 'checkout.php';
+    if (!empty($_SERVER['QUERY_STRING'])) {
+        $redirect .= '?' . $_SERVER['QUERY_STRING'];
+    }
+    header('Location: login.php?redirect=' . urlencode($redirect));
+    exit;
+}
+
 // 1. Initialize session cart if not present
 if (!isset($_SESSION['cart'])) {
     $_SESSION['cart'] = [];
@@ -154,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
                     <link rel="preconnect" href="https://fonts.googleapis.com">
                     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
                     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
-                    <link rel="stylesheet" href="assets/css/style.css?v=3">
+                    <link rel="stylesheet" href="assets/css/style.css?v=4">
                 </head>
                 <body class="loader-page">
                     <div class="loader-content">
