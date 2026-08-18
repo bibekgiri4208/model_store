@@ -2,114 +2,294 @@
 require_once 'config/db.php';
 include 'includes/header.php';
 
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
-    exit;
+// 1. Initialize session cart if not present
+if (!isset($_SESSION['cart'])) {
+    $_SESSION['cart'] = [];
 }
 
-if (empty($_SESSION['cart'])) {
+// Check for single product checkout OR multi-item cart checkout
+$product_id = intval($_REQUEST['id'] ?? $_POST['product_id'] ?? 0);
+$cart_items = $_SESSION['cart'];
+
+if ($product_id <= 0 && empty($cart_items)) {
     header('Location: index.php');
     exit;
 }
 
-// Fetch Cart Total
-$ids = implode(',', array_keys($_SESSION['cart']));
-$stmt = $pdo->query("SELECT * FROM products WHERE id IN ($ids)");
-$products = $stmt->fetchAll();
+// 2. Fetch and normalize checkout items into a structured array
+$items_to_checkout = [];
+$grand_total = 0.0;
 
-$total_amount = 0;
-foreach ($products as $p) {
-    $total_amount += $p['price'] * $_SESSION['cart'][$p['id']];
+if ($product_id > 0) {
+    // Single product direct checkout flow
+    $stmt = $pdo->prepare("SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.id = ?");
+    $stmt->execute([$product_id]);
+    $product = $stmt->fetch();
+
+    if (!$product) {
+        header('Location: index.php');
+        exit;
+    }
+
+    $items_to_checkout[] = [
+        'product_id' => $product['id'],
+        'title'      => $product['title'],
+        'price'      => (float)$product['price'],
+        'quantity'   => 1,
+        'image_url'  => $product['image_url']
+    ];
+    $grand_total = (float)$product['price'];
+} else {
+    // Session cart checkout flow
+    foreach ($cart_items as $id => $item) {
+        if (!is_array($item)) {
+            $stmt = $pdo->prepare("SELECT * FROM products WHERE id = ?");
+            $stmt->execute([intval($id)]);
+            $p = $stmt->fetch();
+            if (!$p) continue;
+            $item = [
+                'product_id' => $p['id'],
+                'title'      => $p['title'],
+                'price'      => (float)$p['price'],
+                'quantity'   => 1,
+                'image_url'  => $p['image_url']
+            ];
+        } else {
+            $item['product_id'] = $item['id'] ?? $id;
+        }
+
+        $items_to_checkout[] = $item;
+        $grand_total += $item['price'] * $item['quantity'];
+    }
 }
 
-$success_order_id = null;
+$error = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $shipping_address = trim($_POST['shipping_address'] ?? '');
-    
-    if (!empty($shipping_address)) {
-        $pdo->beginTransaction();
+// 3. Process Order Submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
+    $full_name      = trim($_POST['full_name'] ?? '');
+    $phone          = trim($_POST['phone'] ?? '');
+    $address        = trim($_POST['address'] ?? '');
+    $city           = trim($_POST['city'] ?? '');
+    $payment_method = $_POST['payment_method'] ?? 'esewa';
+    $user_id        = $_SESSION['user_id'] ?? NULL;
+
+    if (empty($full_name) || empty($phone) || empty($address) || empty($city)) {
+        $error = "Please fill in all required shipping fields.";
+    } else {
         try {
-            // Create Order
-            $stmt = $pdo->prepare("INSERT INTO orders (user_id, total_amount, status) VALUES (?, ?, 'Pending')");
-            $stmt->execute([$_SESSION['user_id'], $total_amount]);
+            $pdo->beginTransaction();
+
+            // Insert into orders table
+            $order_stmt = $pdo->prepare("
+                INSERT INTO orders 
+                (user_id, full_name, phone, address, city, total_amount, payment_method, payment_status, status) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 'Pending')
+            ");
+            $order_stmt->execute([
+                $user_id,
+                $full_name,
+                $phone,
+                $address,
+                $city,
+                $grand_total,
+                $payment_method
+            ]);
+
             $order_id = $pdo->lastInsertId();
 
-            // Insert Items
-            $item_stmt = $pdo->prepare("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)");
-            foreach ($products as $p) {
-                $qty = $_SESSION['cart'][$p['id']];
-                $item_stmt->execute([$order_id, $p['id'], $qty, $p['price']]);
+            // Unique transaction UUID
+            $transaction_uuid = "ORD-{$order_id}-" . time();
+
+            // Store UUID in order record
+            $update_stmt = $pdo->prepare("UPDATE orders SET transaction_uuid = ? WHERE id = ?");
+            $update_stmt->execute([$transaction_uuid, $order_id]);
+
+            // Insert items into order_items table
+            $item_stmt = $pdo->prepare("
+                INSERT INTO order_items (order_id, product_id, quantity, unit_price) 
+                VALUES (?, ?, ?, ?)
+            ");
+            foreach ($items_to_checkout as $item) {
+                $item_stmt->execute([
+                    $order_id,
+                    $item['product_id'],
+                    $item['quantity'],
+                    $item['price']
+                ]);
             }
 
             $pdo->commit();
+
+            // Clear session cart
             unset($_SESSION['cart']);
-            $success_order_id = $order_id;
+
+            // 4. eSewa v2.0 Signature & Redirection Block
+            if ($payment_method === 'esewa') {
+                // Ensure plain string conversion for amounts
+                $amount                  = (string)$grand_total;
+                $tax_amount              = "0";
+                $product_service_charge  = "0";
+                $product_delivery_charge = "0";
+
+                $total_calc              = (float)$amount + (float)$tax_amount + (float)$product_service_charge + (float)$product_delivery_charge;
+                $total_amount            = (string)$total_calc;
+
+                // eSewa Sandbox Credentials
+                $product_code = "EPAYTEST"; 
+                $secret_key   = "8gBm/:&EnhH.1/q"; 
+
+                // Raw parameter string formatted in strict order
+                $data_to_hash = "total_amount={$total_amount},transaction_uuid={$transaction_uuid},product_code={$product_code}";
+
+                // Base64-encoded HMAC-SHA256 signature
+                $raw_hash  = hash_hmac('sha256', $data_to_hash, $secret_key, true);
+                $signature = base64_encode($raw_hash);
+                ?>
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Redirecting to eSewa...</title>
+                    <style>
+                        body { background: #09090b; color: #fff; font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+                        .loader { text-align: center; }
+                        .spinner { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1); border-radius: 50%; border-top-color: #60bb46; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+                        @keyframes spin { to { transform: rotate(360deg); } }
+                    </style>
+                </head>
+                <body onload="document.getElementById('esewa_form').submit();">
+                    <div class="loader">
+                        <div class="spinner"></div>
+                        <p>Redirecting to eSewa Payment Gateway...</p>
+                    </div>
+
+                    <form id="esewa_form" action="https://rc-epay.esewa.com.np/api/epay/main/v2/form" method="POST">
+                        <input type="hidden" name="amount" value="<?= $amount; ?>" required>
+                        <input type="hidden" name="tax_amount" value="<?= $tax_amount; ?>" required>
+                        <input type="hidden" name="total_amount" value="<?= $total_amount; ?>" required>
+                        <input type="hidden" name="transaction_uuid" value="<?= $transaction_uuid; ?>" required>
+                        <input type="hidden" name="product_code" value="<?= $product_code; ?>" required>
+                        <input type="hidden" name="product_service_charge" value="<?= $product_service_charge; ?>" required>
+                        <input type="hidden" name="product_delivery_charge" value="<?= $product_delivery_charge; ?>" required>
+                        
+                        <!-- Redirecting to order-success.php -->
+                        <input type="hidden" name="success_url" value="http://localhost/model_store/order-success.php" required>
+                        <input type="hidden" name="failure_url" value="http://localhost/model_store/payment_failure.php" required>
+                        
+                        <input type="hidden" name="signed_field_names" value="total_amount,transaction_uuid,product_code" required>
+                        <input type="hidden" name="signature" value="<?= $signature; ?>" required>
+                    </form>
+                </body>
+                </html>
+                <?php
+                exit;
+            } else {
+                // Cash on Delivery redirection to order-success.php
+                header("Location: order-success.php?transaction_uuid=" . urlencode($transaction_uuid) . "&status=cod");
+                exit;
+            }
+
         } catch (Exception $e) {
             $pdo->rollBack();
-            $error = "Failed to process order. Please try again.";
+            $error = "Failed to place order: " . $e->getMessage();
         }
-    } else {
-        $error = "Please provide a shipping address.";
     }
 }
 ?>
 
 <style>
-    .checkout-container { max-width: 600px; margin: 0 auto; padding: 60px 24px 96px; }
-    .checkout-card { background: var(--bg-card); border: 1px solid var(--border-color); padding: 32px; border-radius: 8px; }
-    .title { font-size: 20px; font-weight: 500; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; }
-    
-    .form-group { margin-bottom: 20px; }
-    label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px; }
-    textarea { width: 100%; background: var(--bg-main); border: 1px solid var(--border-color); color: var(--text-primary); padding: 12px; border-radius: 6px; font-size: 14px; outline: none; height: 100px; resize: vertical; }
-    
-    .summary-box { background: var(--bg-main); border: 1px solid var(--border-color); padding: 16px; border-radius: 6px; margin-bottom: 24px; font-size: 14px; color: var(--text-muted); }
-    .summary-box div { display: flex; justify-content: space-between; margin-bottom: 8px; }
-    .summary-box div.total { color: var(--text-primary); font-weight: 600; font-size: 16px; border-top: 1px solid var(--border-color); padding-top: 8px; margin-bottom: 0; }
-
-    .btn-submit { width: 100%; background: var(--text-primary); color: var(--bg-main); border: none; padding: 14px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
-    .success-box { text-align: center; padding: 32px 0; }
-    .success-box h2 { font-weight: 500; margin-bottom: 12px; }
-    .success-box p { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
+    .checkout-wrapper { max-width: 1000px; margin: 40px auto 96px; padding: 0 24px; display: grid; grid-template-columns: 1fr 380px; gap: 40px; }
+    @media (max-width: 850px) { .checkout-wrapper { grid-template-columns: 1fr; } }
+    .section-title { font-size: 20px; font-weight: 500; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+    .form-control { width: 100%; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); padding: 12px 14px; border-radius: 6px; font-size: 14px; outline: none; box-sizing: border-box; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .payment-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+    .payment-card { border: 1px solid var(--border-color); background: var(--bg-card); border-radius: 8px; padding: 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+    .badge-esewa { background: #60bb46; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; }
+    .summary-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 24px; height: fit-content; }
+    .summary-product { display: flex; gap: 16px; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color); }
+    .summary-product img { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; background: #000; }
+    .summary-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 12px; color: var(--text-muted); }
+    .summary-row.total { border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 16px; font-size: 16px; font-weight: 600; color: var(--text-primary); }
+    .btn-submit { width: 100%; background: var(--text-primary); color: var(--bg-main); border: none; padding: 14px; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 20px; }
+    .alert-error { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #ef4444; padding: 12px 16px; border-radius: 6px; font-size: 14px; margin-bottom: 20px; }
 </style>
 
-<main class="checkout-container">
-    <div class="checkout-card">
-        <?php if ($success_order_id): ?>
-            <div class="success-box">
-                <h2>Order Confirmed</h2>
-                <p>Your order <strong>#<?= $success_order_id ?></strong> has been successfully placed.</p>
-                <a href="index.php" class="btn-submit" style="display: inline-block; text-decoration: none; width: auto; padding: 10px 24px;">Return to Catalog</a>
-            </div>
-        <?php else: ?>
-            <h1 class="title">Checkout</h1>
+<div class="checkout-wrapper">
+    <div>
+        <h2 class="section-title">Shipping & Payment Details</h2>
 
-            <?php if (isset($error)): ?>
-                <div style="color: #ef4444; font-size: 14px; margin-bottom: 16px;"><?= $error ?></div>
-            <?php endif; ?>
-
-            <form action="checkout.php" method="POST">
-                <div class="summary-box">
-                    <div>
-                        <span>Items Count</span>
-                        <span><?= array_sum($_SESSION['cart']) ?></span>
-                    </div>
-                    <div class="total">
-                        <span>Total Payable</span>
-                        <span>$<?= number_format($total_amount, 2) ?></span>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Shipping Address</label>
-                    <textarea name="shipping_address" required placeholder="Enter street address, city, and postal code"></textarea>
-                </div>
-
-                <button type="submit" class="btn-submit">Confirm and Place Order</button>
-            </form>
+        <?php if (!empty($error)): ?>
+            <div class="alert-error"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
+
+        <form method="POST" action="checkout.php">
+            <input type="hidden" name="product_id" value="<?= $product_id ?>">
+            <input type="hidden" name="place_order" value="1">
+
+            <div class="form-group">
+                <label for="full_name">Full Name *</label>
+                <input type="text" id="full_name" name="full_name" class="form-control" required value="<?= htmlspecialchars($_POST['full_name'] ?? '') ?>">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="phone">Phone Number *</label>
+                    <input type="text" id="phone" name="phone" class="form-control" required value="<?= htmlspecialchars($_POST['phone'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                    <label for="city">City *</label>
+                    <input type="text" id="city" name="city" class="form-control" required value="<?= htmlspecialchars($_POST['city'] ?? '') ?>">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="address">Street Address / Delivery Location *</label>
+                <input type="text" id="address" name="address" class="form-control" required value="<?= htmlspecialchars($_POST['address'] ?? '') ?>">
+            </div>
+
+            <div class="form-group" style="margin-top: 24px;">
+                <label>Select Payment Method *</label>
+                <div class="payment-options">
+                    <label class="payment-card">
+                        <input type="radio" name="payment_method" value="esewa" checked>
+                        <span>eSewa <span class="badge-esewa">ePay</span></span>
+                    </label>
+
+                    <label class="payment-card">
+                        <input type="radio" name="payment_method" value="cod">
+                        <span>Cash on Delivery</span>
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit">Pay with eSewa / Place Order</button>
+        </form>
     </div>
-</main>
+
+    <div class="summary-card">
+        <h3 class="section-title" style="font-size: 16px;">Order Summary (<?= count($items_to_checkout) ?>)</h3>
+        
+        <?php foreach ($items_to_checkout as $item): ?>
+            <div class="summary-product">
+                <img src="<?= htmlspecialchars($item['image_url']) ?>" alt="<?= htmlspecialchars($item['title']) ?>">
+                <div>
+                    <h4 style="margin: 0 0 4px; font-size: 14px;"><?= htmlspecialchars($item['title']) ?></h4>
+                    <p style="margin: 0; font-size: 12px; color: var(--text-muted);">
+                        Qty: <?= $item['quantity'] ?> &times; NPR <?= number_format($item['price'], 2) ?>
+                    </p>
+                </div>
+            </div>
+        <?php endforeach; ?>
+
+        <div class="summary-row"><span>Items Subtotal</span><span>NPR <?= number_format($grand_total, 2) ?></span></div>
+        <div class="summary-row"><span>Shipping</span><span>Free</span></div>
+        <div class="summary-row total"><span>Total Amount</span><span>NPR <?= number_format($grand_total, 2) ?></span></div>
+    </div>
+</div>
+
 </body>
 </html>
