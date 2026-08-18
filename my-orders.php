@@ -1,6 +1,6 @@
 <?php
-session_start();
 require_once 'config/db.php';
+include 'includes/header.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -8,64 +8,170 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = $_SESSION['user_id'];
+$selected_order_id = (int)($_GET['view'] ?? 0);
 
-// Fetch orders with items using your exact DB structure
-$stmt = $pdo->prepare("SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC");
+// Fetch itemized details if a specific order is selected
+$selected_order = null;
+$order_items = [];
+
+if ($selected_order_id > 0) {
+    // Verify order belongs to the logged-in user
+    $stmt = $pdo->prepare("SELECT * FROM orders WHERE id = ? AND user_id = ?");
+    $stmt->execute([$selected_order_id, $user_id]);
+    $selected_order = $stmt->fetch();
+
+    if ($selected_order) {
+        $items_stmt = $pdo->prepare("
+            SELECT oi.*, p.title, p.image_url, p.scale 
+            FROM order_items oi 
+            JOIN products p ON oi.product_id = p.id 
+            WHERE oi.order_id = ?
+        ");
+        $items_stmt->execute([$selected_order_id]);
+        $order_items = $items_stmt->fetchAll();
+    }
+}
+
+// Fetch all orders list
+$stmt = $pdo->prepare("
+    SELECT o.*, COUNT(oi.id) AS total_items 
+    FROM orders o 
+    LEFT JOIN order_items oi ON o.id = oi.order_id 
+    WHERE o.user_id = ? 
+    GROUP BY o.id 
+    ORDER BY o.created_at DESC
+");
 $stmt->execute([$user_id]);
 $orders = $stmt->fetchAll();
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Orders - Apex Replica Store</title>
-    <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; min-height: 100vh; }
-        .container { max-width: 900px; margin: auto; }
-        header { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 18px 30px; border-radius: 12px; border: 1px solid #334155; margin-bottom: 25px; }
-        header h1 a { color: #38bdf8; text-decoration: none; font-size: 24px; font-weight: bold; }
-        header nav a { color: #94a3b8; text-decoration: none; font-weight: 600; margin-left: 20px; }
 
-        .order-card { background: #1e293b; border-radius: 12px; border: 1px solid #334155; padding: 20px; margin-bottom: 20px; }
-        .order-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 12px; margin-bottom: 15px; }
-        .order-id { font-size: 18px; font-weight: bold; color: #38bdf8; }
-        .status-badge { font-size: 12px; padding: 4px 10px; border-radius: 6px; font-weight: bold; text-transform: uppercase; background: #0284c7; color: #fff; }
+<style>
+    .orders-container { max-width: 900px; margin: 0 auto; padding: 60px 24px 96px; }
+    .page-title { font-size: 24px; font-weight: 500; margin-bottom: 32px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; color: var(--text-primary); }
+    
+    .orders-list { display: flex; flex-direction: column; gap: 16px; }
+    
+    .order-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; text-decoration: none; transition: border-color 0.15s ease; }
+    .order-card:hover { border-color: var(--border-light); }
+
+    .order-meta { display: flex; flex-direction: column; gap: 4px; }
+    .order-id { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+    .order-date { font-size: 12px; color: var(--text-muted); }
+    .order-items-count { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    
+    .order-right { display: flex; align-items: center; gap: 24px; }
+    .order-total { font-size: 16px; font-weight: 600; color: var(--text-primary); text-align: right; }
+    
+    .badge-status { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border-color); font-weight: 500; }
+    .status-pending { background: rgba(234, 179, 8, 0.1); color: #eab308; border-color: rgba(234, 179, 8, 0.2); }
+    .status-processing { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-color: rgba(59, 130, 246, 0.2); }
+    .status-shipped { background: rgba(168, 85, 247, 0.1); color: #a855f7; border-color: rgba(168, 85, 247, 0.2); }
+    .status-completed { background: rgba(34, 197, 94, 0.1); color: #22c55e; border-color: rgba(34, 197, 94, 0.2); }
+    .status-cancelled { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2); }
+
+    /* Detail View Styling */
+    .btn-back { display: inline-block; color: var(--text-muted); text-decoration: none; font-size: 13px; margin-bottom: 24px; transition: color 0.15s ease; }
+    .btn-back:hover { color: var(--text-primary); }
+
+    .detail-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 32px; }
+    .detail-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; margin-bottom: 24px; }
+    
+    .items-table { width: 100%; border-collapse: collapse; text-align: left; }
+    .items-table th { font-size: 12px; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding: 12px 0; font-weight: 500; }
+    .items-table td { padding: 16px 0; border-bottom: 1px solid var(--border-color); font-size: 14px; color: var(--text-primary); vertical-align: middle; }
+
+    .item-cell { display: flex; align-items: center; gap: 16px; }
+    .item-thumb { width: 50px; height: 38px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); background: #000; }
+
+    .btn-catalog { display: inline-block; background: var(--text-primary); color: var(--bg-main); padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; text-decoration: none; margin-top: 16px; }
+</style>
+
+<main class="orders-container">
+    <?php if ($selected_order): ?>
+        <!-- Itemized Order Detail View -->
+        <a href="my-orders.php" class="btn-back">&larr; Back to Order History</a>
         
-        .order-details { color: #cbd5e1; font-size: 14px; line-height: 1.6; }
-        .order-amount { font-size: 20px; color: #4ade80; font-weight: bold; margin-top: 10px; }
-        .empty-orders { background: #1e293b; padding: 40px; text-align: center; border-radius: 12px; border: 1px solid #334155; color: #94a3b8; }
-    </style>
-</head>
-<body>
-<div class="container">
-    <header>
-        <h1><a href="index.php">Apex Replica Store</a></h1>
-        <nav><a href="index.php">← Back to Shop</a></nav>
-    </header>
-
-    <h2>My Orders</h2>
-
-    <?php if (empty($orders)): ?>
-        <div class="empty-orders">
-            <p>You haven't placed any orders yet.</p>
-        </div>
-    <?php else: ?>
-        <?php foreach ($orders as $order): ?>
-            <div class="order-card">
-                <div class="order-header">
-                    <span class="order-id">Order #<?= $order['id'] ?></span>
-                    <span class="status-badge"><?= htmlspecialchars($order['status']) ?></span>
+        <div class="detail-card">
+            <div class="detail-header">
+                <div>
+                    <h1 style="font-size: 20px; font-weight: 600; margin-bottom: 4px;">Order #<?= $selected_order['id'] ?></h1>
+                    <div style="font-size: 13px; color: var(--text-muted);">Placed on <?= date('F j, Y', strtotime($selected_order['created_at'])) ?></div>
                 </div>
-                <div class="order-details">
-                    <strong>Date:</strong> <?= date('F j, Y, g:i a', strtotime($order['created_at'])) ?><br>
-                    <strong>Shipping Address:</strong> <?= htmlspecialchars($order['shipping_address']) ?>
-                    <div class="order-amount">$<?= number_format($order['total_amount'], 2) ?></div>
+                <span class="badge-status status-<?= strtolower($selected_order['status']) ?>">
+                    <?= htmlspecialchars($selected_order['status']) ?>
+                </span>
+            </div>
+
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                        <th style="text-align: right;">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($order_items as $item): ?>
+                        <tr>
+                            <td>
+                                <div class="item-cell">
+                                    <img src="<?= htmlspecialchars($item['image_url']) ?>" class="item-thumb" alt="">
+                                    <div>
+                                        <div style="font-weight: 500;"><?= htmlspecialchars($item['title']) ?></div>
+                                        <div style="font-size: 12px; color: var(--text-muted);"><?= htmlspecialchars($item['scale']) ?></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>$<?= number_format($item['price'], 2) ?></td>
+                            <td><?= $item['quantity'] ?></td>
+                            <td style="text-align: right; font-weight: 500;">$<?= number_format($item['price'] * $item['quantity'], 2) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+
+            <div style="display: flex; justify-content: space-between; margin-top: 24px; padding-top: 16px;">
+                <div style="font-size: 13px; color: var(--text-muted);">
+                    <strong>Payment Status:</strong> Paid
+                </div>
+                <div style="font-size: 18px; font-weight: 600;">
+                    Total: $<?= number_format($selected_order['total_amount'], 2) ?>
                 </div>
             </div>
-        <?php endforeach; ?>
+        </div>
+
+    <?php else: ?>
+        <!-- Main Orders List View -->
+        <h1 class="page-title">Order History</h1>
+
+        <?php if (empty($orders)): ?>
+            <p style="color: var(--text-muted); margin-bottom: 16px;">You haven't placed any orders yet.</p>
+            <a href="index.php" class="btn-catalog">Explore Catalog</a>
+        <?php else: ?>
+            <div class="orders-list">
+                <?php foreach ($orders as $order): ?>
+                    <a href="my-orders.php?view=<?= $order['id'] ?>" class="order-card">
+                        <div class="order-meta">
+                            <span class="order-id">Order #<?= $order['id'] ?></span>
+                            <span class="order-date">Placed on <?= date('M d, Y', strtotime($order['created_at'])) ?></span>
+                            <span class="order-items-count"><?= $order['total_items'] ?> <?= $order['total_items'] === 1 ? 'item' : 'items' ?></span>
+                        </div>
+
+                        <div class="order-right">
+                            <span class="badge-status status-<?= strtolower($order['status']) ?>">
+                                <?= htmlspecialchars($order['status']) ?>
+                            </span>
+                            <div class="order-total">
+                                $<?= number_format($order['total_amount'], 2) ?>
+                            </div>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     <?php endif; ?>
-</div>
+</main>
+
 </body>
 </html>
