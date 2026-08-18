@@ -3,13 +3,13 @@ require_once 'config/db.php';
 include 'includes/header.php';
 
 // Capture Search and Filter parameters
-$search = trim($_GET['q'] ?? '');
-$scale = trim($_GET['scale'] ?? '');
+$search   = trim($_GET['q'] ?? '');
+$scale    = trim($_GET['scale'] ?? '');
 $category = trim($_GET['category'] ?? '');
 
 // Fetch active categories for the filter dropdown
 $categories_stmt = $pdo->query("SELECT * FROM categories ORDER BY name ASC");
-$all_categories = $categories_stmt->fetchAll();
+$all_categories  = $categories_stmt->fetchAll();
 
 // Dynamic Query Builder
 $sql = "SELECT p.*, c.name as category_name 
@@ -92,26 +92,39 @@ $products = $stmt->fetchAll();
         border-radius: 8px; 
         overflow: hidden; 
         transition: border-color 0.2s ease, transform 0.2s ease; 
-        text-decoration: none; 
-        color: inherit; 
         display: flex; 
         flex-direction: column; 
     }
     .product-card:hover { border-color: var(--border-light); transform: translateY(-3px); }
 
-    .image-wrapper { width: 100%; aspect-ratio: 16 / 10; background: #000; overflow: hidden; position: relative; }
+    .image-wrapper { width: 100%; aspect-ratio: 16 / 10; background: #000; overflow: hidden; position: relative; display: block; }
     .image-wrapper img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; opacity: 0.9; }
     .product-card:hover .image-wrapper img { transform: scale(1.04); opacity: 1; }
 
-    .badge-scale { position: absolute; top: 12px; left: 12px; background: rgba(9, 9, 11, 0.85); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 11px; font-weight: 500; padding: 4px 8px; border-radius: 4px; backdrop-filter: blur(4px); }
+    .badge-scale { position: absolute; top: 12px; left: 12px; background: rgba(9, 9, 11, 0.85); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 11px; font-weight: 500; padding: 4px 8px; border-radius: 4px; backdrop-filter: blur(4px); z-index: 2; }
 
     .card-content { padding: 20px; display: flex; flex-direction: column; flex-grow: 1; }
     .category-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 6px; }
-    .product-title { font-size: 16px; font-weight: 500; color: var(--text-primary); margin-bottom: 16px; line-height: 1.4; }
     
+    .product-title-link { text-decoration: none; color: inherit; }
+    .product-title { font-size: 16px; font-weight: 500; color: var(--text-primary); margin-bottom: 16px; line-height: 1.4; }
+    .product-title-link:hover .product-title { color: var(--text-light, #fff); }
+
     .card-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; }
     .price { font-size: 15px; font-weight: 600; color: var(--text-primary); }
-    .stock-status { font-size: 12px; color: var(--text-muted); }
+    
+    .btn-add-cart {
+        background: var(--text-primary);
+        color: var(--bg-main);
+        border: none;
+        padding: 8px 14px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.15s ease;
+    }
+    .btn-add-cart:hover { opacity: 0.85; }
 </style>
 
 <section class="hero-section">
@@ -154,20 +167,34 @@ $products = $stmt->fetchAll();
     <?php else: ?>
         <div class="product-grid">
             <?php foreach ($products as $product): ?>
-                <a href="product.php?id=<?= $product['id'] ?>" class="product-card">
-                    <div class="image-wrapper">
+                <div class="product-card">
+                    <!-- Image click goes to product.php -->
+                    <a href="product.php?id=<?= $product['id'] ?>" class="image-wrapper">
                         <span class="badge-scale"><?= htmlspecialchars($product['scale'] ?? '1:18') ?></span>
                         <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['title']) ?>" loading="lazy">
-                    </div>
+                    </a>
+
                     <div class="card-content">
                         <span class="category-label"><?= htmlspecialchars($product['category_name'] ?? 'Scale Model') ?></span>
-                        <h2 class="product-title"><?= htmlspecialchars($product['title']) ?></h2>
+                        
+                        <!-- Title click goes to product.php -->
+                        <a href="product.php?id=<?= $product['id'] ?>" class="product-title-link">
+                            <h2 class="product-title"><?= htmlspecialchars($product['title']) ?></h2>
+                        </a>
+
                         <div class="card-footer">
                             <span class="price"><?= format_price($product['price']) ?></span>
-                            <span class="stock-status"><?= $product['stock'] > 0 ? $product['stock'] . ' available' : 'Out of stock' ?></span>
+                            
+                            <!-- Add to Cart Form -->
+                            <form action="cart.php" method="POST" style="margin: 0;">
+                                <input type="hidden" name="action" value="add">
+                                <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
+                                <input type="hidden" name="quantity" value="1">
+                                <button type="submit" class="btn-add-cart">Add to Cart</button>
+                            </form>
                         </div>
                     </div>
-                </a>
+                </div>
             <?php endforeach; ?>
         </div>
     <?php endif; ?>
