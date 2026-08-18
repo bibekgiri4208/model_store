@@ -66,82 +66,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Add Product</title>
-    <style>
-        * { box-sizing: border-box; font-family: Arial, sans-serif; }
-        body { padding: 20px; background: #f4f6f8; color: #333; max-width: 700px; margin: auto; }
-        
-        header { display: flex; justify-content: space-between; align-items: center; background: #1e293b; color: #fff; padding: 15px 25px; border-radius: 8px; margin-bottom: 25px; }
-        header h1 { margin: 0; font-size: 20px; }
-        header a { color: #38bdf8; text-decoration: none; font-weight: bold; }
-
-        .card { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        
-        .alert-success { background: #dcfce7; border: 1px solid #86efac; color: #166534; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-weight: bold; }
-        .alert-danger { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-weight: bold; }
-
-        .form-group { margin-bottom: 18px; }
-        .form-group label { display: block; margin-bottom: 6px; font-weight: bold; color: #475569; font-size: 14px; }
-        .form-group input[type="text"],
-        .form-group input[type="number"],
-        .form-group select,
-        .form-group textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
-        .form-group textarea { resize: vertical; height: 100px; }
-        .form-group input[type="file"] { font-size: 14px; }
-
-        .submit-btn { background: #0284c7; color: white; border: none; padding: 12px 20px; border-radius: 6px; font-weight: bold; font-size: 15px; cursor: pointer; width: 100%; }
-        .submit-btn:hover { background: #0369a1; }
-    </style>
+    <title>Add Product - Apex Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/style.css?v=3">
 </head>
 <body>
+<div class="admin-container">
+    <header class="admin-header">
+        <h1>Add New Model Car</h1>
+        <nav class="admin-nav">
+            <a href="dashboard.php">Overview</a>
+            <a href="products.php">Products</a>
+            <a href="orders.php" class="active">Orders</a>
+            <a href="../index.php">View Store</a>
+            <a href="../logout.php">Sign Out</a>
+        </nav>
+    </header>
 
-<header>
-    <h1>Add New Model Car</h1>
-    <a href="orders.php">Manage Orders</a>
-</header>
+    <div class="card">
+        <?php if ($message): ?>
+            <div class="alert alert-success"><?= htmlspecialchars($message) ?></div>
+        <?php endif; ?>
 
-<div class="card">
-    <?php if ($message): ?>
-        <div class="alert-success"><?= htmlspecialchars($message) ?></div>
-    <?php endif; ?>
+        <?php if ($error): ?>
+            <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+        <?php endif; ?>
 
-    <?php if ($error): ?>
-        <div class="alert-danger"><?= htmlspecialchars($error) ?></div>
-    <?php endif; ?>
+        <form action="add-product.php" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="title">Product Title *</label>
+                <input type="text" id="title" name="title" class="form-control" placeholder="e.g., Porsche 911 GT3 RS (1:18)" required>
+            </div>
 
-    <form action="add-product.php" method="POST" enctype="multipart/form-data">
-        <div class="form-group">
-            <label for="title">Product Title *</label>
-            <input type="text" id="title" name="title" placeholder="e.g., Porsche 911 GT3 RS (1:18)" required>
-        </div>
+            <div class="form-group">
+                <label for="category_id">Category *</label>
+                <select id="category_id" name="category_id" class="form-control" required>
+                    <option value="">-- Select Category --</option>
+                    <?php foreach ($categories as $cat): ?>
+                        <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
 
-        <div class="form-group">
-            <label for="category_id">Category *</label>
-            <select id="category_id" name="category_id" required>
-                <option value="">-- Select Category --</option>
-                <?php foreach ($categories as $cat): ?>
-                    <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
+            <div class="form-group">
+                <label for="price">Price (Rs.) *</label>
+                <input type="number" id="price" name="price" class="form-control" step="0.01" min="0" placeholder="149.99" required>
+            </div>
 
-        <div class="form-group">
-            <label for="price">Price ($) *</label>
-            <input type="number" id="price" name="price" step="0.01" min="0" placeholder="149.99" required>
-        </div>
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" class="form-control" placeholder="Enter scale details, die-cast materials, opening parts..."></textarea>
+            </div>
 
-        <div class="form-group">
-            <label for="description">Description</label>
-            <textarea id="description" name="description" placeholder="Enter scale details, die-cast materials, opening parts..."></textarea>
-        </div>
+            <div class="form-group">
+                <label for="image">Product Image (JPG, PNG, WEBP)</label>
+                <input type="file" id="image" name="image" class="form-control" accept="image/*">
+            </div>
 
-        <div class="form-group">
-            <label for="image">Product Image (JPG, PNG, WEBP)</label>
-            <input type="file" id="image" name="image" accept="image/*">
-        </div>
-
-        <button type="submit" name="add_product" class="submit-btn">Save Product</button>
-    </form>
+            <button type="submit" name="add_product" class="btn-submit">Save Product</button>
+        </form>
+    </div>
 </div>
 
 </body>

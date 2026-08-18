@@ -97,21 +97,7 @@ if ($order) {
 }
 ?>
 
-<style>
-    .success-container { max-width: 650px; margin: 60px auto 96px; padding: 32px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; text-align: center; }
-    .status-icon { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 28px; }
-    .status-icon.success { background: rgba(96, 187, 70, 0.15); color: #60bb46; border: 2px solid #60bb46; }
-    .status-icon.error { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 2px solid #ef4444; }
-    .order-details { text-align: left; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin: 24px 0; }
-    .detail-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 10px; color: var(--text-muted); }
-    .detail-row strong { color: var(--text-primary); }
-    .item-list { border-top: 1px solid var(--border-color); margin-top: 16px; padding-top: 16px; }
-    .item-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-    .item-row img { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; }
-    .btn-home { display: inline-block; background: var(--text-primary); color: var(--bg-main); padding: 12px 28px; border-radius: 6px; font-weight: 600; text-decoration: none; margin-top: 12px; }
-</style>
-
-<div class="success-container">
+<div class="status-container">
     <?php if ($is_success): ?>
         <div class="status-icon success">&#10003;</div>
         <h2 style="margin: 0 0 8px;"><?= htmlspecialchars($message) ?></h2>
@@ -125,7 +111,7 @@ if ($order) {
                     <div class="detail-row"><span>eSewa Ref ID:</span><strong><?= htmlspecialchars($order['esewa_ref_id']) ?></strong></div>
                 <?php endif; ?>
                 <div class="detail-row"><span>Payment Method:</span><strong style="text-transform: uppercase;"><?= htmlspecialchars($order['payment_method']) ?></strong></div>
-                <div class="detail-row"><span>Total Amount:</span><strong>NPR <?= number_format($order['total_amount'], 2) ?></strong></div>
+                <div class="detail-row"><span>Total Amount:</span><strong>Rs. <?= number_format($order['total_amount'], 2) ?></strong></div>
 
                 <div class="item-list">
                     <h4 style="margin: 0 0 12px; font-size: 14px;">Purchased Items</h4>
@@ -134,7 +120,7 @@ if ($order) {
                             <img src="<?= htmlspecialchars($item['image_url']) ?>" alt="<?= htmlspecialchars($item['title']) ?>">
                             <div style="flex: 1;">
                                 <div style="font-size: 13px; font-weight: 500;"><?= htmlspecialchars($item['title']) ?></div>
-                                <div style="font-size: 12px; color: var(--text-muted);">Qty: <?= $item['quantity'] ?> &times; NPR <?= number_format($item['unit_price'], 2) ?></div>
+                                <div style="font-size: 12px; color: var(--text-muted);">Qty: <?= $item['quantity'] ?> &times; Rs. <?= number_format($item['unit_price'], 2) ?></div>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -148,8 +134,9 @@ if ($order) {
         <p style="color: var(--text-muted); font-size: 14px;"><?= htmlspecialchars($message) ?></p>
     <?php endif; ?>
 
-    <a href="index.php" class="btn-home">Return to Home</a>
+    <a href="index.php" class="btn btn-primary" style="margin-top: 24px;">Return to Home</a>
 </div>
 
+<?php include 'includes/footer.php'; ?>
 </body>
 </html>

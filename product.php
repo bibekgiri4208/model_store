@@ -24,35 +24,50 @@ if (!$product) {
 }
 ?>
 
-<style>
-    .product-detail-container { max-width: 1000px; margin: 48px auto; padding: 0 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
-    @media (max-width: 768px) { .product-detail-container { grid-template-columns: 1fr; } }
-    .product-detail-image { width: 100%; aspect-ratio: 16/10; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-color); background: #000; }
-    .product-info h1 { font-size: 28px; margin-bottom: 8px; }
-    .category-badge { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-    .price-tag { font-size: 22px; font-weight: 600; margin: 16px 0; }
-    .description { color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
-    .btn-checkout { background: var(--text-primary); color: var(--bg-main); border: none; padding: 14px 28px; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; text-align: center; }
-    .btn-checkout:hover { opacity: 0.9; }
-</style>
-
 <div class="product-detail-container">
     <div>
-        <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['title']) ?>" class="product-detail-image">
+        <a href="index.php" class="btn-back">&larr; Back to Catalog</a>
+        <div class="product-image-frame">
+            <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['title']) ?>" class="product-detail-image">
+        </div>
     </div>
     <div class="product-info">
         <span class="category-badge"><?= htmlspecialchars($product['category_name'] ?? 'Scale Model') ?></span>
         <h1><?= htmlspecialchars($product['title']) ?></h1>
+
+        <div class="product-meta">
+            <span class="meta-chip">Scale: <?= htmlspecialchars($product['scale'] ?? '1:18') ?></span>
+            <?php if (!empty($product['type'])): ?>
+                <span class="meta-chip"><?= htmlspecialchars($product['type']) ?></span>
+            <?php endif; ?>
+        </div>
+
         <div class="price-tag"><?= format_price($product['price']) ?></div>
         <p class="description"><?= htmlspecialchars($product['description'] ?? 'Precision scale replica.') ?></p>
 
-        <!-- Redirect Form sending product ID via GET -->
+        <?php $in_stock = (int)($product['stock'] ?? 0) > 0; ?>
+        <div class="stock-info <?= $in_stock ? 'in-stock' : 'out-of-stock' ?>">
+            <?php if ($in_stock): ?>
+                In Stock &middot; <?= (int)$product['stock'] ?> available
+            <?php else: ?>
+                Currently Out of Stock
+            <?php endif; ?>
+        </div>
+
+        <form action="cart.php" method="POST">
+            <input type="hidden" name="action" value="add">
+            <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
+            <input type="hidden" name="quantity" value="1">
+            <button type="submit" class="btn btn-ghost btn-lg btn-block" <?= $in_stock ? '' : 'disabled' ?>>Add to Cart</button>
+        </form>
+
         <form action="checkout.php" method="GET">
             <input type="hidden" name="id" value="<?= htmlspecialchars($product['id']) ?>">
-            <button type="submit" class="btn-checkout">Proceed to Checkout</button>
+            <button type="submit" class="btn btn-primary btn-lg btn-block" <?= $in_stock ? '' : 'disabled' ?>>Buy Now</button>
         </form>
     </div>
 </div>
 
+<?php include 'includes/footer.php'; ?>
 </body>
 </html>

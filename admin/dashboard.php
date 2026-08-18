@@ -22,48 +22,17 @@ $recent_orders = $stmt->fetchAll();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Overview - Apex Replicas</title>
+    <title>Admin Overview - Apex Scale Models</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-main: #09090b;
-            --bg-card: #121215;
-            --border-color: #27272a;
-            --border-light: #3f3f46;
-            --text-primary: #f4f4f5;
-            --text-muted: #a1a1aa;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-        body { background: var(--bg-main); color: var(--text-primary); padding: 24px; }
-        .container { max-width: 1100px; margin: 0 auto; }
-
-        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; margin-bottom: 32px; }
-        header h1 { font-size: 18px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-primary); }
-        
-        nav a { color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 400; margin-left: 24px; transition: color 0.15s ease; }
-        nav a:hover, nav a.active { color: var(--text-primary); }
-
-        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 32px; }
-        .metric-card { background: var(--bg-card); border: 1px solid var(--border-color); padding: 20px; border-radius: 6px; }
-        .metric-card label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px; }
-        .metric-card .val { font-size: 24px; font-weight: 600; color: var(--text-primary); }
-
-        .table-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; }
-        .table-title { padding: 16px 20px; font-size: 14px; font-weight: 500; border-bottom: 1px solid var(--border-color); }
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th { background: #000; padding: 12px 20px; color: var(--text-muted); font-size: 12px; font-weight: 500; border-bottom: 1px solid var(--border-color); }
-        td { padding: 14px 20px; border-bottom: 1px solid var(--border-color); font-size: 14px; color: var(--text-primary); }
-        tr:last-child td { border-bottom: none; }
-        
-        .status { font-size: 12px; color: var(--text-muted); }
-    </style>
+    <link rel="stylesheet" href="../assets/css/style.css?v=3">
 </head>
 <body>
-<div class="container">
-    <header>
+<div class="admin-container">
+    <header class="admin-header">
         <h1>Apex Admin</h1>
-        <nav>
+        <nav class="admin-nav">
             <a href="dashboard.php" class="active">Overview</a>
             <a href="products.php">Products</a>
             <a href="orders.php">Orders</a>
@@ -75,7 +44,7 @@ $recent_orders = $stmt->fetchAll();
     <div class="metrics-grid">
         <div class="metric-card">
             <label>Total Revenue</label>
-            <div class="val">$<?= number_format($total_revenue, 2) ?></div>
+            <div class="val"><?= format_price($total_revenue) ?></div>
         </div>
         <div class="metric-card">
             <label>Orders Processed</label>
@@ -95,17 +64,21 @@ $recent_orders = $stmt->fetchAll();
                     <th>Order ID</th>
                     <th>Customer</th>
                     <th>Total</th>
+                    <th>Payment</th>
                     <th>Status</th>
                     <th>Date</th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($recent_orders as $order): ?>
+                <?php foreach ($recent_orders as $order): 
+                    $pay_method = strtolower($order['payment_method'] ?? '');
+                ?>
                     <tr>
                         <td>#<?= $order['id'] ?></td>
                         <td><?= htmlspecialchars($order['full_name']) ?></td>
-                        <td>$<?= number_format($order['total_amount'], 2) ?></td>
-                        <td><span class="status"><?= htmlspecialchars($order['status']) ?></span></td>
+                        <td><?= format_price($order['total_amount']) ?></td>
+                        <td><span class="chip <?= $pay_method === 'cod' ? 'chip-cod' : 'chip-esewa' ?>"><?= $pay_method === 'cod' ? 'COD' : 'eSewa' ?></span></td>
+                        <td><span class="badge-status status-<?= strtolower($order['status']) ?>"><?= htmlspecialchars($order['status']) ?></span></td>
                         <td><?= date('Y-m-d', strtotime($order['created_at'])) ?></td>
                     </tr>
                 <?php endforeach; ?>

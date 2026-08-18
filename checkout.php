@@ -151,15 +151,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
                 <head>
                     <meta charset="UTF-8">
                     <title>Redirecting to eSewa...</title>
-                    <style>
-                        body { background: #09090b; color: #fff; font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-                        .loader { text-align: center; }
-                        .spinner { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1); border-radius: 50%; border-top-color: #60bb46; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
-                        @keyframes spin { to { transform: rotate(360deg); } }
-                    </style>
+                    <link rel="preconnect" href="https://fonts.googleapis.com">
+                    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+                    <link rel="stylesheet" href="assets/css/style.css?v=3">
                 </head>
-                <body onload="document.getElementById('esewa_form').submit();">
-                    <div class="loader">
+                <body class="loader-page">
+                    <div class="loader-content">
                         <div class="spinner"></div>
                         <p>Redirecting to eSewa Payment Gateway...</p>
                     </div>
@@ -175,11 +173,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
                         
                         <!-- Redirecting to order-success.php -->
                         <input type="hidden" name="success_url" value="http://localhost/model_store/order-success.php" required>
-                        <input type="hidden" name="failure_url" value="http://localhost/model_store/payment_failure.php" required>
+                        <input type="hidden" name="failure_url" value="http://localhost/model_store/failure.php" required>
                         
                         <input type="hidden" name="signed_field_names" value="total_amount,transaction_uuid,product_code" required>
                         <input type="hidden" name="signature" value="<?= $signature; ?>" required>
                     </form>
+                    <script>
+                        window.onload = function () {
+                            document.getElementById('esewa_form').submit();
+                        };
+                    </script>
                 </body>
                 </html>
                 <?php
@@ -198,32 +201,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
 }
 ?>
 
-<style>
-    .checkout-wrapper { max-width: 1000px; margin: 40px auto 96px; padding: 0 24px; display: grid; grid-template-columns: 1fr 380px; gap: 40px; }
-    @media (max-width: 850px) { .checkout-wrapper { grid-template-columns: 1fr; } }
-    .section-title { font-size: 20px; font-weight: 500; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; }
-    .form-group { margin-bottom: 18px; }
-    .form-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
-    .form-control { width: 100%; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); padding: 12px 14px; border-radius: 6px; font-size: 14px; outline: none; box-sizing: border-box; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .payment-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
-    .payment-card { border: 1px solid var(--border-color); background: var(--bg-card); border-radius: 8px; padding: 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
-    .badge-esewa { background: #60bb46; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; }
-    .summary-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 24px; height: fit-content; }
-    .summary-product { display: flex; gap: 16px; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color); }
-    .summary-product img { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; background: #000; }
-    .summary-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 12px; color: var(--text-muted); }
-    .summary-row.total { border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 16px; font-size: 16px; font-weight: 600; color: var(--text-primary); }
-    .btn-submit { width: 100%; background: var(--text-primary); color: var(--bg-main); border: none; padding: 14px; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 20px; }
-    .alert-error { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #ef4444; padding: 12px 16px; border-radius: 6px; font-size: 14px; margin-bottom: 20px; }
-</style>
-
 <div class="checkout-wrapper">
     <div>
         <h2 class="section-title">Shipping & Payment Details</h2>
 
         <?php if (!empty($error)): ?>
-            <div class="alert-error"><?= htmlspecialchars($error) ?></div>
+            <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
         <form method="POST" action="checkout.php">
@@ -266,7 +249,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
                 </div>
             </div>
 
-            <button type="submit" class="btn-submit">Pay with eSewa / Place Order</button>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">Pay with eSewa / Place Order</button>
         </form>
     </div>
 
@@ -279,17 +262,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
                 <div>
                     <h4 style="margin: 0 0 4px; font-size: 14px;"><?= htmlspecialchars($item['title']) ?></h4>
                     <p style="margin: 0; font-size: 12px; color: var(--text-muted);">
-                        Qty: <?= $item['quantity'] ?> &times; NPR <?= number_format($item['price'], 2) ?>
+                        Qty: <?= $item['quantity'] ?> &times; Rs. <?= number_format($item['price'], 2) ?>
                     </p>
                 </div>
             </div>
         <?php endforeach; ?>
 
-        <div class="summary-row"><span>Items Subtotal</span><span>NPR <?= number_format($grand_total, 2) ?></span></div>
+        <div class="summary-row"><span>Items Subtotal</span><span>Rs. <?= number_format($grand_total, 2) ?></span></div>
         <div class="summary-row"><span>Shipping</span><span>Free</span></div>
-        <div class="summary-row total"><span>Total Amount</span><span>NPR <?= number_format($grand_total, 2) ?></span></div>
+        <div class="summary-row total"><span>Total Amount</span><span>Rs. <?= number_format($grand_total, 2) ?></span></div>
     </div>
 </div>
 
+<?php include 'includes/footer.php'; ?>
 </body>
 </html>

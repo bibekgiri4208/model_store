@@ -42,124 +42,93 @@ $stmt->execute([$user_id]);
 $orders = $stmt->fetchAll();
 ?>
 
-<style>
-    .orders-container { max-width: 900px; margin: 0 auto; padding: 60px 24px 96px; }
-    .page-title { font-size: 24px; font-weight: 500; margin-bottom: 32px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; color: var(--text-primary); }
-    
-    .orders-list { display: flex; flex-direction: column; gap: 16px; }
-    
-    .order-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; text-decoration: none; transition: border-color 0.15s ease; }
-    .order-card:hover { border-color: var(--border-light); }
-
-    .order-meta { display: flex; flex-direction: column; gap: 4px; }
-    .order-id { font-size: 15px; font-weight: 600; color: var(--text-primary); }
-    .order-date { font-size: 12px; color: var(--text-muted); }
-    .order-items-count { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    
-    .order-right { display: flex; align-items: center; gap: 24px; }
-    .order-total { font-size: 16px; font-weight: 600; color: var(--text-primary); text-align: right; }
-    
-    .badge-status { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border-color); font-weight: 500; }
-    .status-pending { background: rgba(234, 179, 8, 0.1); color: #eab308; border-color: rgba(234, 179, 8, 0.2); }
-    .status-processing { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-color: rgba(59, 130, 246, 0.2); }
-    .status-shipped { background: rgba(168, 85, 247, 0.1); color: #a855f7; border-color: rgba(168, 85, 247, 0.2); }
-    .status-completed { background: rgba(34, 197, 94, 0.1); color: #22c55e; border-color: rgba(34, 197, 94, 0.2); }
-    .status-cancelled { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2); }
-
-    .btn-back { display: inline-block; color: var(--text-muted); text-decoration: none; font-size: 13px; margin-bottom: 24px; transition: color 0.15s ease; }
-    .btn-back:hover { color: var(--text-primary); }
-
-    .detail-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 32px; }
-    .detail-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; margin-bottom: 24px; }
-    
-    .items-table { width: 100%; border-collapse: collapse; text-align: left; }
-    .items-table th { font-size: 12px; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding: 12px 0; font-weight: 500; }
-    .items-table td { padding: 16px 0; border-bottom: 1px solid var(--border-color); font-size: 14px; color: var(--text-primary); vertical-align: middle; }
-
-    .item-cell { display: flex; align-items: center; gap: 16px; }
-    .item-thumb { width: 50px; height: 38px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); background: #000; }
-
-    .btn-catalog { display: inline-block; background: var(--text-primary); color: var(--bg-main); padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; text-decoration: none; margin-top: 16px; }
-</style>
-
 <main class="orders-container">
     <?php if ($selected_order): ?>
         <a href="my-orders.php" class="btn-back">&larr; Back to Order History</a>
-        
+
+        <?php
+            $subtotal = 0;
+            foreach ($order_items as $item) {
+                $subtotal += $item['unit_price'] * $item['quantity'];
+            }
+            $pay_state = strtolower($selected_order['payment_status'] ?? 'pending');
+            $pay_class = 'pay-pending';
+            $pay_label = 'Pending';
+            if ($pay_state === 'completed') { $pay_class = 'pay-ok'; $pay_label = 'Paid'; }
+            elseif ($pay_state === 'failed') { $pay_class = 'pay-failed'; $pay_label = 'Failed'; }
+        ?>
+
         <div class="detail-card">
             <div class="detail-header">
-                <div>
-                    <h1 style="font-size: 20px; font-weight: 600; margin-bottom: 4px;">Order #<?= $selected_order['id'] ?></h1>
-                    <div style="font-size: 13px; color: var(--text-muted);">Placed on <?= date('F j, Y', strtotime($selected_order['created_at'])) ?></div>
+                <div class="detail-heading">
+                    <h1 class="detail-title">Order #<?= $selected_order['id'] ?></h1>
+                    <div class="detail-meta">
+                        <span class="meta-chip">Placed <?= date('M d, Y', strtotime($selected_order['created_at'])) ?></span>
+                        <span class="meta-chip"><?= htmlspecialchars($selected_order['payment_method'] ?? 'esewa') ?></span>
+                        <span class="meta-chip meta-chip-accent"><?= htmlspecialchars($selected_order['transaction_uuid']) ?></span>
+                    </div>
                 </div>
                 <span class="badge-status status-<?= strtolower($selected_order['status']) ?>">
                     <?= htmlspecialchars($selected_order['status']) ?>
                 </span>
             </div>
 
-            <table class="items-table">
-                <thead>
-                    <tr>
-                        <th>Item</th>
-                        <th>Price</th>
-                        <th>Quantity</th>
-                        <th style="text-align: right;">Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody>
+            <div class="detail-section">
+                <h3 class="detail-subtitle">Items</h3>
+                <div class="order-items-list">
                     <?php foreach ($order_items as $item): ?>
-                        <tr>
-                            <td>
-                                <div class="item-cell">
-                                    <img src="<?= htmlspecialchars($item['image_url']) ?>" class="item-thumb" alt="">
-                                    <div>
-                                        <div style="font-weight: 500;"><?= htmlspecialchars($item['title']) ?></div>
-                                        <div style="font-size: 12px; color: var(--text-muted);"><?= htmlspecialchars($item['scale']) ?></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td><?= format_price($item['price']) ?></td>
-                            <td><?= $item['quantity'] ?></td>
-                            <td style="text-align: right; font-weight: 500;"><?= format_price($item['price'] * $item['quantity']) ?></td>
-                        </tr>
+                        <div class="order-item">
+                            <img src="<?= htmlspecialchars($item['image_url']) ?>" class="order-item-img" alt="<?= htmlspecialchars($item['title']) ?>">
+                            <div class="order-item-info">
+                                <div class="order-item-title"><?= htmlspecialchars($item['title']) ?></div>
+                                <div class="order-item-meta">Scale: <?= htmlspecialchars($item['scale']) ?> &middot; <?= format_price($item['unit_price']) ?></div>
+                            </div>
+                            <span class="order-item-qty">&times; <?= $item['quantity'] ?></span>
+                            <span class="order-item-subtotal"><?= format_price($item['unit_price'] * $item['quantity']) ?></span>
+                        </div>
                     <?php endforeach; ?>
-                </tbody>
-            </table>
+                </div>
+            </div>
 
-            <div style="display: flex; justify-content: space-between; margin-top: 24px; padding-top: 16px;">
-                <div style="font-size: 13px; color: var(--text-muted);">
-                    <strong>Payment Status:</strong> Paid
-                </div>
-                <div style="font-size: 18px; font-weight: 600;">
-                    Total: <?= format_price($selected_order['total_amount']) ?>
-                </div>
+            <div class="order-summary">
+                <div class="summary-row"><span>Items Subtotal</span><span><?= format_price($subtotal) ?></span></div>
+                <div class="summary-row"><span>Shipping</span><span>Free</span></div>
+                <div class="summary-row"><span>Payment</span><span class="<?= $pay_class ?>"><?= $pay_label ?></span></div>
+                <div class="summary-row total"><span>Total</span><span><?= format_price($selected_order['total_amount']) ?></span></div>
             </div>
         </div>
 
     <?php else: ?>
         <h1 class="page-title">Order History</h1>
+        <p class="page-subtitle">Track and review your previous purchases.</p>
 
         <?php if (empty($orders)): ?>
-            <p style="color: var(--text-muted); margin-bottom: 16px;">You haven't placed any orders yet.</p>
-            <a href="index.php" class="btn-catalog">Explore Catalog</a>
+            <div class="empty-state" style="padding: 40px 0;">
+                <div class="empty-state-icon">&#128196;</div>
+                <p>You haven't placed any orders yet.</p>
+                <a href="index.php" class="btn btn-primary">Explore Catalog</a>
+            </div>
         <?php else: ?>
             <div class="orders-list">
                 <?php foreach ($orders as $order): ?>
                     <a href="my-orders.php?view=<?= $order['id'] ?>" class="order-card">
-                        <div class="order-meta">
-                            <span class="order-id">Order #<?= $order['id'] ?></span>
-                            <span class="order-date">Placed on <?= date('M d, Y', strtotime($order['created_at'])) ?></span>
-                            <span class="order-items-count"><?= $order['total_items'] ?> <?= $order['total_items'] === 1 ? 'item' : 'items' ?></span>
+                        <div class="order-main">
+                            <div class="order-id">Order #<?= $order['id'] ?></div>
+                            <div class="order-sub">
+                                <span class="order-date"><?= date('M d, Y', strtotime($order['created_at'])) ?></span>
+                                <span class="order-dot">&middot;</span>
+                                <span class="order-items-count"><?= $order['total_items'] ?> <?= $order['total_items'] === 1 ? 'item' : 'items' ?></span>
+                            </div>
                         </div>
 
-                        <div class="order-right">
+                        <div class="order-side">
+                            <div class="order-total"><?= format_price($order['total_amount']) ?></div>
                             <span class="badge-status status-<?= strtolower($order['status']) ?>">
                                 <?= htmlspecialchars($order['status']) ?>
                             </span>
-                            <div class="order-total">
-                                <?= format_price($order['total_amount']) ?>
-                            </div>
                         </div>
+
+                        <span class="order-chevron" aria-hidden="true">&#8594;</span>
                     </a>
                 <?php endforeach; ?>
             </div>
@@ -167,5 +136,6 @@ $orders = $stmt->fetchAll();
     <?php endif; ?>
 </main>
 
+<?php include 'includes/footer.php'; ?>
 </body>
 </html>

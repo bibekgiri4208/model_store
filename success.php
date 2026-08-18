@@ -39,30 +39,26 @@ elseif (isset($_GET['status']) && $_GET['status'] === 'cod' && isset($_GET['uuid
 }
 ?>
 
-<style>
-    .status-card { max-width: 500px; margin: 80px auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 32px; text-align: center; }
-    .status-card h2 { margin-bottom: 8px; }
-    .status-card p { color: var(--text-muted); font-size: 14px; }
-    .btn-home { display: inline-block; margin-top: 24px; background: var(--text-primary); color: var(--bg-main); padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; }
-</style>
-
-<div class="status-card">
+<div class="status-container">
     <?php if ($success): ?>
-        <h2 style="color: #60bb46;">Order Placed Successfully!</h2>
-        <p>Thank you for your purchase.</p>
+        <div class="status-icon success">&#10003;</div>
+        <h2 style="margin: 0 0 8px; color: var(--accent);">Order Placed Successfully!</h2>
+        <p style="color: var(--text-muted); font-size: 14px;">Thank you for your purchase.</p>
         <?php if (!empty($ref_id)): ?>
-            <p><strong>eSewa Reference ID:</strong> <?= htmlspecialchars($ref_id) ?></p>
+            <p style="font-size: 14px;"><strong>eSewa Reference ID:</strong> <?= htmlspecialchars($ref_id) ?></p>
         <?php endif; ?>
         <?php if ($order): ?>
-            <p><strong>Order Reference:</strong> <?= htmlspecialchars($order['transaction_uuid']) ?></p>
+            <p style="font-size: 14px;"><strong>Order Reference:</strong> <?= htmlspecialchars($order['transaction_uuid']) ?></p>
         <?php endif; ?>
     <?php else: ?>
-        <h2 style="color: #ef4444;">Verification Failed</h2>
-        <p>Could not verify the transaction details.</p>
+        <div class="status-icon error">&#10007;</div>
+        <h2 style="margin: 0 0 8px; color: var(--danger);">Verification Failed</h2>
+        <p style="color: var(--text-muted); font-size: 14px;">Could not verify the transaction details.</p>
     <?php endif; ?>
 
-    <a href="index.php" class="btn-home">Return to Catalog</a>
+    <a href="index.php" class="btn btn-primary" style="margin-top: 24px;">Return to Catalog</a>
 </div>
 
+<?php include 'includes/footer.php'; ?>
 </body>
 </html>

@@ -41,93 +41,8 @@ $stmt->execute($params);
 $products = $stmt->fetchAll();
 ?>
 
-<style>
-    .hero-section { padding: 48px 24px 32px; max-width: 1200px; margin: 0 auto; }
-    .hero-section h1 { font-size: 32px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 8px; }
-    .hero-section p { color: var(--text-muted); font-size: 15px; max-width: 500px; font-weight: 300; }
-
-    /* Filter Bar Styling */
-    .filter-bar { max-width: 1200px; margin: 0 auto; padding: 0 24px 32px; border-bottom: 1px solid var(--border-color); }
-    .filter-form { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-
-    .filter-input, .filter-select {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        color: var(--text-primary);
-        padding: 10px 14px;
-        border-radius: 6px;
-        font-size: 14px;
-        outline: none;
-        transition: border-color 0.15s ease;
-    }
-    .filter-input { flex-grow: 1; min-width: 220px; }
-    .filter-input:focus, .filter-select:focus { border-color: var(--border-light); }
-    
-    .btn-filter {
-        background: var(--text-primary);
-        color: var(--bg-main);
-        border: none;
-        padding: 10px 20px;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-    }
-    .btn-reset {
-        color: var(--text-muted);
-        font-size: 13px;
-        text-decoration: none;
-        padding: 10px 12px;
-        transition: color 0.15s ease;
-    }
-    .btn-reset:hover { color: var(--text-primary); }
-
-    /* Catalog Grid */
-    .catalog-container { max-width: 1200px; margin: 0 auto; padding: 48px 24px 96px; }
-    .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 32px; }
-    
-    .product-card { 
-        background: var(--bg-card); 
-        border: 1px solid var(--border-color); 
-        border-radius: 8px; 
-        overflow: hidden; 
-        transition: border-color 0.2s ease, transform 0.2s ease; 
-        display: flex; 
-        flex-direction: column; 
-    }
-    .product-card:hover { border-color: var(--border-light); transform: translateY(-3px); }
-
-    .image-wrapper { width: 100%; aspect-ratio: 16 / 10; background: #000; overflow: hidden; position: relative; display: block; }
-    .image-wrapper img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; opacity: 0.9; }
-    .product-card:hover .image-wrapper img { transform: scale(1.04); opacity: 1; }
-
-    .badge-scale { position: absolute; top: 12px; left: 12px; background: rgba(9, 9, 11, 0.85); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 11px; font-weight: 500; padding: 4px 8px; border-radius: 4px; backdrop-filter: blur(4px); z-index: 2; }
-
-    .card-content { padding: 20px; display: flex; flex-direction: column; flex-grow: 1; }
-    .category-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 6px; }
-    
-    .product-title-link { text-decoration: none; color: inherit; }
-    .product-title { font-size: 16px; font-weight: 500; color: var(--text-primary); margin-bottom: 16px; line-height: 1.4; }
-    .product-title-link:hover .product-title { color: var(--text-light, #fff); }
-
-    .card-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; }
-    .price { font-size: 15px; font-weight: 600; color: var(--text-primary); }
-    
-    .btn-add-cart {
-        background: var(--text-primary);
-        color: var(--bg-main);
-        border: none;
-        padding: 8px 14px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: opacity 0.15s ease;
-    }
-    .btn-add-cart:hover { opacity: 0.85; }
-</style>
-
 <section class="hero-section">
+    <span class="hero-eyebrow">Precision Collection</span>
     <h1>Scale Models</h1>
     <p>Precision-engineered diecast and resin miniatures for collector purists.</p>
 </section>
@@ -163,14 +78,18 @@ $products = $stmt->fetchAll();
 
 <main class="catalog-container">
     <?php if (empty($products)): ?>
-        <p style="color: var(--text-muted);">No scale models matched your query.</p>
+        <div class="empty-state">
+            <div class="empty-state-icon">&#128269;</div>
+            <p>No scale models matched your query.</p>
+            <a href="index.php" class="btn btn-primary">Clear Filters</a>
+        </div>
     <?php else: ?>
         <div class="product-grid">
             <?php foreach ($products as $product): ?>
                 <div class="product-card">
                     <!-- Image click goes to product.php -->
                     <a href="product.php?id=<?= $product['id'] ?>" class="image-wrapper">
-                        <span class="badge-scale"><?= htmlspecialchars($product['scale'] ?? '1:18') ?></span>
+                        <span class="badge"><?= htmlspecialchars($product['scale'] ?? '1:18') ?></span>
                         <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['title']) ?>" loading="lazy">
                     </a>
 
@@ -200,5 +119,6 @@ $products = $stmt->fetchAll();
     <?php endif; ?>
 </main>
 
+<?php include 'includes/footer.php'; ?>
 </body>
 </html>

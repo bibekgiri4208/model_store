@@ -67,57 +67,27 @@ $products = $stmt->fetchAll();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Products - Apex Replica Admin</title>
-    <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; min-height: 100vh; }
-        .container { max-width: 1100px; margin: auto; }
-
-        header { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 18px 30px; border-radius: 12px; border: 1px solid #334155; margin-bottom: 25px; }
-        header h1 { margin: 0; font-size: 22px; color: #38bdf8; }
-        header nav a { color: #94a3b8; text-decoration: none; font-weight: 600; margin-left: 20px; }
-        header nav a:hover, header nav a.active { color: #38bdf8; }
-
-        .alert { background: #064e3b; color: #6ee7b7; border: 1px solid #047857; padding: 14px 20px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; }
-
-        .grid-layout { display: grid; grid-template-columns: 350px 1fr; gap: 25px; }
-        @media (max-width: 850px) { .grid-layout { grid-template-columns: 1fr; } }
-
-        .card { background: #1e293b; border-radius: 12px; border: 1px solid #334155; padding: 20px; }
-        .card h3 { margin-top: 0; color: #38bdf8; border-bottom: 1px solid #334155; padding-bottom: 10px; }
-
-        .form-group { margin-bottom: 12px; }
-        label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 4px; }
-        input, select, textarea { width: 100%; background: #0f172a; border: 1px solid #334155; color: #fff; padding: 10px; border-radius: 8px; font-size: 14px; outline: none; }
-        textarea { resize: vertical; height: 80px; }
-        
-        .btn-submit { width: 100%; background: #38bdf8; color: #0f172a; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .btn-cancel { display: block; text-align: center; color: #94a3b8; text-decoration: none; font-size: 13px; margin-top: 8px; }
-
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th { background: #0f172a; padding: 12px; color: #94a3b8; font-size: 13px; border-bottom: 1px solid #334155; }
-        td { padding: 12px; border-bottom: 1px solid #334155; font-size: 14px; }
-        
-        .img-thumb { width: 45px; height: 45px; object-fit: cover; border-radius: 6px; border: 1px solid #334155; }
-        .btn-edit { color: #38bdf8; text-decoration: none; font-weight: bold; margin-right: 10px; }
-        .btn-delete { color: #ef4444; text-decoration: none; font-weight: bold; }
-    </style>
+    <title>Manage Products - Apex Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/style.css?v=3">
 </head>
 <body>
-<div class="container">
-    <header>
-        <h1>🏎️ Product Management</h1>
-        <nav>
+<div class="admin-container">
+    <header class="admin-header">
+        <h1>Product Management</h1>
+        <nav class="admin-nav">
             <a href="dashboard.php">Overview</a>
             <a href="products.php" class="active">Products</a>
-            <a href="orders.php">Manage Orders</a>
-            <a href="../index.php">View Site</a>
-            <a href="../logout.php">Logout</a>
+            <a href="orders.php">Orders</a>
+            <a href="../index.php">View Store</a>
+            <a href="../logout.php">Sign Out</a>
         </nav>
     </header>
 
     <?php if (isset($_GET['msg'])): ?>
-        <div class="alert">Product operation completed successfully.</div>
+        <div class="alert alert-success">Product operation completed successfully.</div>
     <?php endif; ?>
 
     <div class="grid-layout">
@@ -144,22 +114,22 @@ $products = $stmt->fetchAll();
                 </div>
 
                 <div class="form-group" style="display:flex; gap:10px;">
-                    <div>
-                        <label>Price ($)</label>
+                    <div style="flex:1;">
+                        <label>Price (Rs.)</label>
                         <input type="number" step="0.01" name="price" required value="<?= $edit_product['price'] ?? '' ?>">
                     </div>
-                    <div>
+                    <div style="flex:1;">
                         <label>Stock</label>
                         <input type="number" name="stock" required value="<?= $edit_product['stock'] ?? 10 ?>">
                     </div>
                 </div>
 
                 <div class="form-group" style="display:flex; gap:10px;">
-                    <div>
+                    <div style="flex:1;">
                         <label>Scale</label>
                         <input type="text" name="scale" value="<?= htmlspecialchars($edit_product['scale'] ?? '1:18') ?>">
                     </div>
-                    <div>
+                    <div style="flex:1;">
                         <label>Type</label>
                         <input type="text" name="type" value="<?= htmlspecialchars($edit_product['type'] ?? 'Diecast') ?>">
                     </div>
@@ -203,8 +173,8 @@ $products = $stmt->fetchAll();
                         <tr>
                             <td><img src="<?= htmlspecialchars($img) ?>" class="img-thumb" alt=""></td>
                             <td><strong><?= htmlspecialchars($p['title']) ?></strong></td>
-                            <td><span style="color:#94a3b8;"><?= htmlspecialchars($p['category_name'] ?? 'N/A') ?></span></td>
-                            <td>$<?= number_format($p['price'], 2) ?></td>
+                            <td><span class="item-meta"><?= htmlspecialchars($p['category_name'] ?? 'N/A') ?></span></td>
+                            <td><?= format_price($p['price']) ?></td>
                             <td><?= $p['stock'] ?></td>
                             <td>
                                 <a href="products.php?edit=<?= $p['id'] ?>" class="btn-edit">Edit</a>

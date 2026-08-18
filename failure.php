@@ -13,16 +13,13 @@ if (isset($_GET['data'])) {
 }
 ?>
 
-<style>
-    .failure-card { max-width: 500px; margin: 80px auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 32px; text-align: center; }
-    .btn-retry { display: inline-block; margin-top: 20px; background: var(--text-primary); color: var(--bg-main); padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; }
-</style>
-
-<div class="failure-card">
-    <h2 style="color: #ef4444;">Payment Cancelled or Failed</h2>
+<div class="status-container">
+    <div class="status-icon error">&#10007;</div>
+    <h2 style="margin: 0 0 8px; color: var(--danger);">Payment Cancelled or Failed</h2>
     <p style="color: var(--text-muted); font-size: 14px;">Your transaction was not completed. You can retry the order anytime.</p>
-    <a href="index.php" class="btn-retry">Back to Catalog</a>
+    <a href="index.php" class="btn btn-primary" style="margin-top: 24px;">Back to Catalog</a>
 </div>
 
+<?php include 'includes/footer.php'; ?>
 </body>
 </html>

@@ -40,37 +40,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Apex Replica Store</title>
-    <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-        .login-card { background: #1e293b; padding: 30px; border-radius: 12px; border: 1px solid #334155; width: 100%; max-width: 400px; }
-        h2 { margin-top: 0; color: #38bdf8; text-align: center; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; color: #94a3b8; font-size: 14px; }
-        input { width: 100%; background: #0f172a; border: 1px solid #334155; color: #fff; padding: 10px; border-radius: 8px; outline: none; }
-        button { width: 100%; background: #0284c7; color: #fff; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        button:hover { background: #0369a1; }
-        .alert { background: #991b1b; color: #fecaca; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 14px; }
-    </style>
+    <title>Login - Apex Scale Models</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css?v=3">
+    <script src="assets/js/app.js" defer></script>
 </head>
-<body>
-<div class="login-card">
-    <h2>Login</h2>
+<body class="auth-page">
+<div class="auth-card">
+    <h2>Welcome Back</h2>
+    <p class="subtitle">Sign in to your account</p>
+
     <?php if (!empty($error)): ?>
-        <div class="alert"><?= htmlspecialchars($error) ?></div>
+        <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
     <form action="login.php" method="POST">
         <div class="form-group">
             <label>Email Address</label>
-            <input type="email" name="email" required>
+            <input type="email" name="email" required placeholder="you@example.com">
         </div>
         <div class="form-group">
             <label>Password</label>
-            <input type="password" name="password" required>
+            <input type="password" name="password" required placeholder="Enter your password">
         </div>
-        <button type="submit">Sign In</button>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Sign In</button>
     </form>
+    <div class="auth-link">
+        Don't have an account? <a href="register.php">Create one</a>
+    </div>
 </div>
 </body>
 </html>
