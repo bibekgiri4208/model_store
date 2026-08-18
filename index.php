@@ -2,15 +2,19 @@
 session_start();
 require_once 'config/db.php';
 
+// 1. Pagination Configuration
 $items_per_page = 8;
 $current_page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
 if ($current_page < 1) $current_page = 1;
 
+// 2. Capture search query and category filter
 $search = trim($_GET['search'] ?? '');
 $category_id = (int)($_GET['category'] ?? 0);
 
+// Fetch categories for the filter dropdown
 $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll();
 
+// 3. Dynamic WHERE clause
 $where_clauses = ["1=1"];
 $params = [];
 
@@ -27,6 +31,7 @@ if ($category_id > 0) {
 
 $where_sql = implode(" AND ", $where_clauses);
 
+// 4. Count total products for pagination
 $count_stmt = $pdo->prepare("SELECT COUNT(*) FROM products p WHERE {$where_sql}");
 $count_stmt->execute($params);
 $total_products = $count_stmt->fetchColumn();
@@ -35,6 +40,7 @@ $total_pages = ceil($total_products / $items_per_page);
 if ($current_page > $total_pages && $total_pages > 0) $current_page = $total_pages;
 $offset = ($current_page - 1) * $items_per_page;
 
+// 5. Fetch paginated products
 $product_sql = "SELECT p.*, c.name AS category_name 
                 FROM products p 
                 LEFT JOIN categories c ON p.category_id = c.id 
@@ -46,7 +52,7 @@ $product_stmt = $pdo->prepare($product_sql);
 $product_stmt->execute($params);
 $products = $product_stmt->fetchAll();
 
-// Fallback high-res online car photos (Unsplash)
+// High-resolution fallback images (Unsplash)
 $fallback_images = [
     "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=800&q=80",
     "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
@@ -84,7 +90,7 @@ function build_page_url($page_num, $search, $category_id) {
         .filter-form select { flex: 1; min-width: 160px; }
         .filter-form button { background: #0284c7; color: #fff; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
         .filter-form button:hover { background: #0369a1; }
-        .filter-form .reset-btn { background: #475569; color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; font-size: 14px; }
+        .filter-form .reset-btn { background: #475569; color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-flex; align-items: center; }
 
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 25px; }
         .product-card { background: #1e293b; border-radius: 12px; border: 1px solid #334155; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; }
@@ -94,6 +100,7 @@ function build_page_url($page_num, $search, $category_id) {
         .product-category { font-size: 11px; text-transform: uppercase; color: #38bdf8; font-weight: bold; letter-spacing: 1px; }
         .product-title { font-size: 18px; margin: 8px 0; font-weight: bold; }
         .product-title a { color: #f8fafc; text-decoration: none; }
+        .product-title a:hover { color: #38bdf8; }
         .product-price { font-size: 20px; color: #4ade80; font-weight: bold; margin-top: 10px; }
         
         .card-actions { padding: 15px 20px; background: #0f172a; border-top: 1px solid #334155; }
@@ -104,6 +111,8 @@ function build_page_url($page_num, $search, $category_id) {
         .pagination a, .pagination span { padding: 10px 16px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: #38bdf8; text-decoration: none; font-weight: bold; }
         .pagination .active { background: #0284c7; color: #fff; border-color: #0284c7; }
         .pagination .disabled { color: #475569; pointer-events: none; }
+
+        .no-results { background: #1e293b; border: 1px solid #334155; padding: 40px; text-align: center; border-radius: 12px; color: #94a3b8; }
     </style>
 </head>
 <body>
@@ -143,40 +152,47 @@ function build_page_url($page_num, $search, $category_id) {
         </form>
     </div>
 
-    <div class="product-grid">
-        <?php foreach ($products as $idx => $product): 
-            // Determine image source (local file, database URL, or random online fallback)
-            $img_src = $product['image'];
-            if (empty($img_src) || $img_src === 'placeholder.jpg') {
-                $img_src = $fallback_images[$idx % count($fallback_images)];
-            } elseif (!str_starts_with($img_src, 'http')) {
-                $img_src = 'assets/images/' . $img_src;
-            }
-        ?>
-            <div class="product-card">
-                <a href="product.php?id=<?= $product['id'] ?>">
-                    <img src="<?= htmlspecialchars($img_src) ?>" alt="<?= htmlspecialchars($product['title']) ?>">
-                </a>
-                <div class="product-info">
-                    <span class="product-category"><?= htmlspecialchars($product['category_name'] ?: 'Scale Replica') ?></span>
-                    <h3 class="product-title">
-                        <a href="product.php?id=<?= $product['id'] ?>"><?= htmlspecialchars($product['title']) ?></a>
-                    </h3>
-                    <div class="product-price">$<?= number_format($product['price'], 2) ?></div>
-                </div>
-                <div class="card-actions">
-                    <a href="product.php?id=<?= $product['id'] ?>" class="view-btn">View Details</a>
-                </div>
-            </div>
-        <?php endforeach; ?>
-    </div>
-
-    <?php if ($total_pages > 1): ?>
-        <div class="pagination">
-            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                <a href="<?= build_page_url($i, $search, $category_id) ?>" class="<?= $i === $current_page ? 'active' : '' ?>"><?= $i ?></a>
-            <?php endfor; ?>
+    <?php if (empty($products)): ?>
+        <div class="no-results">
+            <h3>No products found</h3>
+            <p>Try clearing your search filters or searching for another scale model.</p>
         </div>
+    <?php else: ?>
+        <div class="product-grid">
+            <?php foreach ($products as $idx => $product): 
+                // Safe lookup checking for 'image', 'image_url', or falling back to Unsplash images
+                $img_src = $product['image'] ?? $product['image_url'] ?? '';
+                if (empty($img_src) || $img_src === 'placeholder.jpg') {
+                    $img_src = $fallback_images[$idx % count($fallback_images)];
+                } elseif (!str_starts_with($img_src, 'http')) {
+                    $img_src = 'assets/images/' . $img_src;
+                }
+            ?>
+                <div class="product-card">
+                    <a href="product.php?id=<?= $product['id'] ?>">
+                        <img src="<?= htmlspecialchars($img_src) ?>" alt="<?= htmlspecialchars($product['title']) ?>">
+                    </a>
+                    <div class="product-info">
+                        <span class="product-category"><?= htmlspecialchars($product['category_name'] ?: 'Scale Replica') ?></span>
+                        <h3 class="product-title">
+                            <a href="product.php?id=<?= $product['id'] ?>"><?= htmlspecialchars($product['title']) ?></a>
+                        </h3>
+                        <div class="product-price">$<?= number_format($product['price'], 2) ?></div>
+                    </div>
+                    <div class="card-actions">
+                        <a href="product.php?id=<?= $product['id'] ?>" class="view-btn">View Details</a>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
+        <?php if ($total_pages > 1): ?>
+            <div class="pagination">
+                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                    <a href="<?= build_page_url($i, $search, $category_id) ?>" class="<?= $i === $current_page ? 'active' : '' ?>"><?= $i ?></a>
+                <?php endfor; ?>
+            </div>
+        <?php endif; ?>
     <?php endif; ?>
 </div>
 
