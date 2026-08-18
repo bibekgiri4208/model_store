@@ -1,142 +1,144 @@
 <?php
-session_start();
 require_once 'config/db.php';
+include 'includes/header.php';
 
 if (!isset($_SESSION['cart'])) {
     $_SESSION['cart'] = [];
 }
 
-// Handle Add/Update/Remove actions
+// Handle Cart Actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
-    $product_id = (int)($_POST['product_id'] ?? 0);
-
-    if ($action === 'add') {
-        $qty = (int)($_POST['quantity'] ?? 1);
-        $_SESSION['cart'][$product_id] = ($_SESSION['cart'][$product_id] ?? 0) + $qty;
-    } elseif ($action === 'update') {
-        $qty = (int)($_POST['quantity'] ?? 1);
-        if ($qty > 0) $_SESSION['cart'][$product_id] = $qty;
-        else unset($_SESSION['cart'][$product_id]);
-    } elseif ($action === 'remove') {
-        unset($_SESSION['cart'][$product_id]);
+    if (isset($_POST['add_to_cart'])) {
+        $id = (int)$_POST['product_id'];
+        $_SESSION['cart'][$id] = ($_SESSION['cart'][$id] ?? 0) + 1;
+    } elseif (isset($_POST['update_cart'])) {
+        foreach ($_POST['qty'] as $id => $qty) {
+            $qty = (int)$qty;
+            if ($qty <= 0) {
+                unset($_SESSION['cart'][$id]);
+            } else {
+                $_SESSION['cart'][$id] = $qty;
+            }
+        }
     }
     header('Location: cart.php');
     exit;
 }
 
+if (isset($_GET['remove'])) {
+    $id = (int)$_GET['remove'];
+    unset($_SESSION['cart'][$id]);
+    header('Location: cart.php');
+    exit;
+}
+
+// Fetch Cart Products
 $cart_items = [];
-$total_amount = 0;
+$subtotal = 0;
 
 if (!empty($_SESSION['cart'])) {
-    $ids = array_keys($_SESSION['cart']);
-    $in_clause = implode(',', array_fill(0, count($ids), '?'));
-    $stmt = $pdo->prepare("SELECT * FROM products WHERE id IN ($in_clause)");
-    $stmt->execute($ids);
+    $ids = implode(',', array_keys($_SESSION['cart']));
+    $stmt = $pdo->query("SELECT * FROM products WHERE id IN ($ids)");
     $products = $stmt->fetchAll();
 
     foreach ($products as $p) {
         $qty = $_SESSION['cart'][$p['id']];
-        $subtotal = $p['price'] * $qty;
-        $total_amount += $subtotal;
+        $item_total = $p['price'] * $qty;
+        $subtotal += $item_total;
         $cart_items[] = [
             'product' => $p,
-            'quantity' => $qty,
-            'subtotal' => $subtotal
+            'qty' => $qty,
+            'item_total' => $item_total
         ];
     }
 }
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Cart - Apex Replica Store</title>
-    <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; min-height: 100vh; }
-        .container { max-width: 1000px; margin: auto; }
-        header { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 18px 30px; border-radius: 12px; border: 1px solid #334155; margin-bottom: 25px; }
-        header h1 a { color: #38bdf8; text-decoration: none; font-size: 24px; font-weight: bold; }
-        header nav a { color: #94a3b8; text-decoration: none; font-weight: 600; margin-left: 20px; }
 
-        .cart-table-card { background: #1e293b; border-radius: 12px; border: 1px solid #334155; overflow: hidden; margin-bottom: 25px; }
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th { background: #0f172a; padding: 16px; color: #94a3b8; border-bottom: 1px solid #334155; font-size: 14px; }
-        td { padding: 16px; border-bottom: 1px solid #334155; }
-        
-        .qty-input { width: 60px; background: #0f172a; border: 1px solid #334155; color: #fff; padding: 6px; border-radius: 6px; text-align: center; }
-        .update-btn { background: #334155; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
-        .remove-btn { background: #ef4444; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+<style>
+    .cart-container { max-width: 900px; margin: 0 auto; padding: 60px 24px 96px; }
+    .cart-title { font-size: 24px; font-weight: 500; margin-bottom: 32px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; }
+    
+    .cart-table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 32px; }
+    .cart-table th { font-size: 12px; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding: 12px 0; font-weight: 500; }
+    .cart-table td { padding: 20px 0; border-bottom: 1px solid var(--border-color); font-size: 14px; vertical-align: middle; }
 
-        .cart-summary { background: #1e293b; padding: 25px; border-radius: 12px; border: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
-        .total-price { font-size: 24px; font-weight: bold; color: #4ade80; }
-        .checkout-btn { background: #4ade80; color: #0f172a; padding: 12px 28px; border-radius: 8px; font-weight: bold; text-decoration: none; }
-        .empty-msg { text-align: center; padding: 40px; color: #94a3b8; }
-    </style>
-</head>
-<body>
-<div class="container">
-    <header>
-        <h1><a href="index.php">Apex Replica Store</a></h1>
-        <nav><a href="index.php">← Back to Shop</a></nav>
-    </header>
+    .item-cell { display: flex; align-items: center; gap: 16px; }
+    .item-thumb { width: 60px; height: 45px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); background: #000; }
+    
+    .qty-input { width: 60px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); padding: 6px; border-radius: 4px; text-align: center; }
+    .remove-link { color: var(--text-muted); text-decoration: none; font-size: 12px; transition: color 0.15s; }
+    .remove-link:hover { color: #ef4444; }
 
-    <div class="cart-table-card">
-        <?php if (empty($cart_items)): ?>
-            <div class="empty-msg">
-                <h2>Your cart is empty</h2>
-                <a href="index.php" style="color:#38bdf8;">Browse die-cast models</a>
-            </div>
-        <?php else: ?>
-            <table>
+    .cart-summary { background: var(--bg-card); border: 1px solid var(--border-color); padding: 24px; border-radius: 6px; max-width: 360px; margin-left: auto; }
+    .summary-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 12px; color: var(--text-muted); }
+    .summary-row.total { font-size: 16px; font-weight: 600; color: var(--text-primary); border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px; }
+
+    .btn-action { display: block; width: 100%; background: var(--text-primary); color: var(--bg-main); border: none; padding: 12px; border-radius: 6px; font-weight: 600; text-align: center; text-decoration: none; font-size: 14px; margin-top: 16px; cursor: pointer; }
+    .btn-secondary { background: transparent; color: var(--text-primary); border: 1px solid var(--border-color); margin-top: 8px; }
+</style>
+
+<main class="cart-container">
+    <h1 class="cart-title">Shopping Cart</h1>
+
+    <?php if (empty($cart_items)): ?>
+        <p style="color: var(--text-muted); margin-bottom: 24px;">Your cart is currently empty.</p>
+        <a href="index.php" class="btn-action" style="display: inline-block; width: auto; padding: 10px 20px;">Explore Catalog</a>
+    <?php else: ?>
+        <form action="cart.php" method="POST">
+            <table class="cart-table">
                 <thead>
                     <tr>
-                        <th>Product</th>
+                        <th>Item</th>
                         <th>Price</th>
                         <th>Quantity</th>
                         <th>Subtotal</th>
-                        <th>Action</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($cart_items as $item): ?>
                         <tr>
-                            <td><strong><?= htmlspecialchars($item['product']['title']) ?></strong></td>
+                            <td>
+                                <div class="item-cell">
+                                    <img src="<?= htmlspecialchars($item['product']['image_url']) ?>" class="item-thumb" alt="">
+                                    <div>
+                                        <div style="font-weight: 500; color: var(--text-primary);"><?= htmlspecialchars($item['product']['title']) ?></div>
+                                        <div style="font-size: 12px; color: var(--text-muted);"><?= htmlspecialchars($item['product']['scale']) ?></div>
+                                    </div>
+                                </div>
+                            </td>
                             <td>$<?= number_format($item['product']['price'], 2) ?></td>
                             <td>
-                                <form action="cart.php" method="POST" style="display:inline-flex; gap:6px;">
-                                    <input type="hidden" name="action" value="update">
-                                    <input type="hidden" name="product_id" value="<?= $item['product']['id'] ?>">
-                                    <input type="number" name="quantity" value="<?= $item['quantity'] ?>" min="1" class="qty-input">
-                                    <button type="submit" class="update-btn">Save</button>
-                                </form>
+                                <input type="number" name="qty[<?= $item['product']['id'] ?>]" value="<?= $item['qty'] ?>" min="1" class="qty-input">
                             </td>
-                            <td>$<?= number_format($item['subtotal'], 2) ?></td>
-                            <td>
-                                <form action="cart.php" method="POST">
-                                    <input type="hidden" name="action" value="remove">
-                                    <input type="hidden" name="product_id" value="<?= $item['product']['id'] ?>">
-                                    <button type="submit" class="remove-btn">Remove</button>
-                                </form>
-                            </td>
+                            <td>$<?= number_format($item['item_total'], 2) ?></td>
+                            <td><a href="cart.php?remove=<?= $item['product']['id'] ?>" class="remove-link">Remove</a></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
-        <?php endif; ?>
-    </div>
 
-    <?php if (!empty($cart_items)): ?>
-        <div class="cart-summary">
-            <div>
-                <span style="color:#94a3b8;">Total Amount:</span>
-                <div class="total-price">$<?= number_format($total_amount, 2) ?></div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <button type="submit" name="update_cart" class="btn-action btn-secondary" style="width: auto; padding: 10px 20px; margin: 0;">Update Quantities</button>
+
+                <div class="cart-summary">
+                    <div class="summary-row">
+                        <span>Subtotal</span>
+                        <span>$<?= number_format($subtotal, 2) ?></span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Shipping</span>
+                        <span>Calculated at checkout</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>Total</span>
+                        <span>$<?= number_format($subtotal, 2) ?></span>
+                    </div>
+                    <a href="checkout.php" class="btn-action">Proceed to Checkout</a>
+                </div>
             </div>
-            <a href="checkout.php" class="checkout-btn">Proceed to Checkout →</a>
-        </div>
+        </form>
     <?php endif; ?>
-</div>
+</main>
 </body>
 </html>

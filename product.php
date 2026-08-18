@@ -1,86 +1,81 @@
 <?php
-session_start();
 require_once 'config/db.php';
+include 'includes/header.php';
 
-$id = (int)($_GET['id'] ?? 0);
+$product_id = (int)($_GET['id'] ?? 0);
+
 $stmt = $pdo->prepare("SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.id = ?");
-$stmt->execute([$id]);
+$stmt->execute([$product_id]);
 $product = $stmt->fetch();
 
 if (!$product) {
     header('Location: index.php');
     exit;
 }
-
-$img_src = !empty($product['image_url']) ? $product['image_url'] : $product['image'];
-if (empty($img_src) || $img_src === 'placeholder.jpg') {
-    $img_src = 'assets/images/placeholder.jpg';
-}
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($product['title']) ?> - Apex Replica Store</title>
-    <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; min-height: 100vh; }
-        .container { max-width: 1100px; margin: auto; }
-        header { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 18px 30px; border-radius: 12px; border: 1px solid #334155; margin-bottom: 25px; }
-        header h1 a { color: #38bdf8; text-decoration: none; font-size: 24px; font-weight: bold; }
-        header nav a { color: #94a3b8; text-decoration: none; font-weight: 600; margin-left: 20px; }
-        header nav a:hover { color: #38bdf8; }
 
-        .product-detail-card { background: #1e293b; border-radius: 12px; border: 1px solid #334155; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; padding: 30px; }
-        @media (max-width: 768px) { .product-detail-card { grid-template-columns: 1fr; } }
-        .product-media img { width: 100%; height: 380px; object-fit: cover; border-radius: 8px; border: 1px solid #334155; }
-        .badge { display: inline-block; background: #0284c7; color: #fff; font-size: 11px; text-transform: uppercase; padding: 4px 10px; border-radius: 6px; font-weight: bold; margin-bottom: 12px; }
-        .product-title { font-size: 28px; margin: 0 0 10px 0; color: #f8fafc; }
-        .product-price { font-size: 28px; color: #4ade80; font-weight: bold; margin-bottom: 15px; }
-        .product-meta { color: #94a3b8; font-size: 14px; margin-bottom: 20px; line-height: 1.6; }
-        .product-desc { background: #0f172a; padding: 16px; border-radius: 8px; border: 1px solid #334155; color: #cbd5e1; margin-bottom: 25px; line-height: 1.6; }
-        
-        .add-cart-form { display: flex; gap: 12px; }
-        .add-cart-form input[type="number"] { width: 80px; background: #0f172a; border: 1px solid #334155; color: #fff; padding: 12px; border-radius: 8px; text-align: center; font-size: 16px; }
-        .add-cart-btn { flex: 1; background: #38bdf8; color: #0f172a; border: none; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; transition: background 0.2s; }
-        .add-cart-btn:hover { background: #7dd3fc; }
-    </style>
-</head>
-<body>
-<div class="container">
-    <header>
-        <h1><a href="index.php">Apex Replica Store</a></h1>
-        <nav>
-            <a href="cart.php">🛒 Cart</a>
-            <a href="my-orders.php">📦 My Orders</a>
-        </nav>
-    </header>
+<style>
+    .product-detail-container { max-width: 1100px; margin: 0 auto; padding: 60px 24px 96px; display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
+    @media (max-width: 768px) { .product-detail-container { grid-template-columns: 1fr; gap: 32px; padding-top: 32px; } }
 
-    <div class="product-detail-card">
-        <div class="product-media">
-            <img src="<?= htmlspecialchars($img_src) ?>" alt="<?= htmlspecialchars($product['title']) ?>">
-        </div>
-        <div class="product-info-panel">
-            <span class="badge"><?= htmlspecialchars($product['category_name'] ?? 'Scale Replica') ?></span>
-            <h1 class="product-title"><?= htmlspecialchars($product['title']) ?></h1>
-            <div class="product-price">$<?= number_format($product['price'], 2) ?></div>
-            <div class="product-meta">
-                <strong>Scale:</strong> <?= htmlspecialchars($product['scale'] ?? 'N/A') ?><br>
-                <strong>Type:</strong> <?= htmlspecialchars($product['type'] ?? 'Diecast') ?><br>
-                <strong>In Stock:</strong> <?= (int)$product['stock'] ?> units
-            </div>
-            <div class="product-desc">
-                <?= nl2br(htmlspecialchars($product['description'] ?? 'No description available.')) ?>
-            </div>
-            <form action="cart.php" method="POST" class="add-cart-form">
-                <input type="hidden" name="action" value="add">
-                <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
-                <input type="number" name="quantity" value="1" min="1" max="<?= $product['stock'] ?>">
-                <button type="submit" class="add-cart-btn">Add to Cart</button>
-            </form>
-        </div>
+    .gallery-viewer { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; aspect-ratio: 4 / 3; width: 100%; }
+    .gallery-viewer img { width: 100%; height: 100%; object-fit: cover; }
+
+    .details-meta { display: flex; flex-direction: column; }
+    .category-tag { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 8px; }
+    .title { font-size: 28px; font-weight: 500; letter-spacing: -0.01em; margin-bottom: 16px; color: var(--text-primary); }
+    .price-row { font-size: 22px; font-weight: 600; color: var(--text-primary); margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; }
+    
+    .spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; background: var(--bg-card); border: 1px solid var(--border-color); padding: 16px; border-radius: 6px; }
+    .spec-item label { display: block; font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; }
+    .spec-item span { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+
+    .description { font-size: 14px; color: var(--text-muted); line-height: 1.6; margin-bottom: 32px; }
+
+    .btn-primary { background: var(--text-primary); color: var(--bg-main); border: none; padding: 14px 24px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.15s ease; text-decoration: none; text-align: center; }
+    .btn-primary:hover { opacity: 0.9; }
+</style>
+
+<main class="product-detail-container">
+    <div class="gallery-viewer">
+        <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['title']) ?>">
     </div>
-</div>
+
+    <div class="details-meta">
+        <span class="category-tag"><?= htmlspecialchars($product['category_name'] ?? 'Collector Model') ?></span>
+        <h1 class="title"><?= htmlspecialchars($product['title']) ?></h1>
+        <div class="price-row">$<?= number_format($product['price'], 2) ?></div>
+
+        <div class="spec-grid">
+            <div class="spec-item">
+                <label>Scale</label>
+                <span><?= htmlspecialchars($product['scale'] ?? '1:18') ?></span>
+            </div>
+            <div class="spec-item">
+                <label>Material</label>
+                <span><?= htmlspecialchars($product['type'] ?? 'Diecast') ?></span>
+            </div>
+            <div class="spec-item">
+                <label>Availability</label>
+                <span><?= $product['stock'] > 0 ? $product['stock'] . ' In Stock' : 'Out of Stock' ?></span>
+            </div>
+            <div class="spec-item">
+                <label>Product ID</label>
+                <span>#<?= $product['id'] ?></span>
+            </div>
+        </div>
+
+        <p class="description"><?= htmlspecialchars($product['description']) ?></p>
+
+        <?php if ($product['stock'] > 0): ?>
+            <form action="cart.php" method="POST">
+                <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
+                <button type="submit" name="add_to_cart" class="btn-primary" style="width: 100%;">Add to Cart</button>
+            </form>
+        <?php else: ?>
+            <button class="btn-primary" disabled style="opacity: 0.4; cursor: not-allowed; width: 100%;">Out of Stock</button>
+        <?php endif; ?>
+    </div>
+</main>
 </body>
 </html>
