@@ -2,149 +2,182 @@
 session_start();
 require_once 'config/db.php';
 
-$catStmt = $pdo->query("SELECT * FROM categories ORDER BY name ASC");
-$categories = $catStmt->fetchAll();
+$items_per_page = 8;
+$current_page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($current_page < 1) $current_page = 1;
 
-$selectedType     = $_GET['type'] ?? '';
-$selectedScale    = $_GET['scale'] ?? '';
-$selectedCategory = $_GET['category'] ?? '';
+$search = trim($_GET['search'] ?? '');
+$category_id = (int)($_GET['category'] ?? 0);
 
-$query = "SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE 1=1";
+$categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll();
+
+$where_clauses = ["1=1"];
 $params = [];
 
-if (!empty($selectedType)) {
-    $query .= " AND p.type = ?";
-    $params[] = $selectedType;
-}
-if (!empty($selectedScale)) {
-    $query .= " AND p.scale = ?";
-    $params[] = $selectedScale;
-}
-if (!empty($selectedCategory)) {
-    $query .= " AND p.category_id = ?";
-    $params[] = $selectedCategory;
+if (!empty($search)) {
+    $where_clauses[] = "(p.title LIKE ? OR p.description LIKE ?)";
+    $params[] = "%{$search}%";
+    $params[] = "%{$search}%";
 }
 
-$query .= " ORDER BY p.created_at DESC";
-$stmt = $pdo->prepare($query);
-$stmt->execute($params);
-$products = $stmt->fetchAll();
+if ($category_id > 0) {
+    $where_clauses[] = "p.category_id = ?";
+    $params[] = $category_id;
+}
+
+$where_sql = implode(" AND ", $where_clauses);
+
+$count_stmt = $pdo->prepare("SELECT COUNT(*) FROM products p WHERE {$where_sql}");
+$count_stmt->execute($params);
+$total_products = $count_stmt->fetchColumn();
+
+$total_pages = ceil($total_products / $items_per_page);
+if ($current_page > $total_pages && $total_pages > 0) $current_page = $total_pages;
+$offset = ($current_page - 1) * $items_per_page;
+
+$product_sql = "SELECT p.*, c.name AS category_name 
+                FROM products p 
+                LEFT JOIN categories c ON p.category_id = c.id 
+                WHERE {$where_sql} 
+                ORDER BY p.id DESC 
+                LIMIT {$items_per_page} OFFSET {$offset}";
+
+$product_stmt = $pdo->prepare($product_sql);
+$product_stmt->execute($params);
+$products = $product_stmt->fetchAll();
+
+// Fallback high-res online car photos (Unsplash)
+$fallback_images = [
+    "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1544829099-b9a0c07fad1a?auto=format&fit=crop&w=800&q=80"
+];
+
+function build_page_url($page_num, $search, $category_id) {
+    $query_params = ['page' => $page_num];
+    if (!empty($search)) $query_params['search'] = $search;
+    if ($category_id > 0) $query_params['category'] = $category_id;
+    return 'index.php?' . http_build_query($query_params);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Model Store - Catalog</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apex Replica - Scale Model Cars</title>
     <style>
-        * { box-sizing: border-box; font-family: Arial, sans-serif; }
-        body { margin: 0; padding: 20px; background: #f4f6f8; color: #333; }
-        header { display: flex; justify-content: space-between; align-items: center; background: #1e293b; color: #fff; padding: 15px 25px; border-radius: 8px; margin-bottom: 25px; }
-        header h1 { margin: 0; font-size: 22px; }
-        header a { color: #38bdf8; text-decoration: none; font-weight: bold; margin-left: 15px; }
-        .layout { display: flex; gap: 25px; }
-        .sidebar { flex: 0 0 240px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); height: fit-content; }
-        .sidebar h3 { margin-top: 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
-        .filter-group { margin-bottom: 15px; }
-        .filter-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
-        .filter-group select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; }
-        .filter-btn { width: 100%; background: #0284c7; color: #fff; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .reset-link { display: block; text-align: center; margin-top: 10px; color: #64748b; font-size: 13px; text-decoration: none; }
-        .catalog { flex: 1; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
-        .product-card { background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
-        .product-card img { width: 100%; height: 160px; object-fit: cover; background: #e2e8f0; }
-        .card-body { padding: 15px; flex: 1; display: flex; flex-direction: column; }
-        .tags { display: flex; gap: 5px; margin-bottom: 8px; }
-        .tag { background: #e2e8f0; color: #334155; font-size: 11px; padding: 3px 6px; border-radius: 4px; font-weight: bold; }
-        .product-title { font-size: 16px; margin: 0 0 8px 0; }
-        .product-title a { color: #1e293b; text-decoration: none; }
-        .product-price { font-size: 18px; font-weight: bold; color: #16a34a; margin-top: auto; }
-        .add-cart-btn { background: #16a34a; color: white; border: none; width: 100%; padding: 8px; border-radius: 4px; margin-top: 10px; cursor: pointer; font-weight: bold; }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; min-height: 100vh; }
+        .container { max-width: 1200px; margin: auto; }
+
+        header { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 18px 30px; border-radius: 12px; border: 1px solid #334155; margin-bottom: 25px; }
+        header h1 { margin: 0; font-size: 24px; color: #38bdf8; letter-spacing: 1px; }
+        header nav a { color: #94a3b8; text-decoration: none; font-weight: 600; margin-left: 20px; transition: color 0.2s; }
+        header nav a:hover { color: #38bdf8; }
+
+        .filter-card { background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; margin-bottom: 30px; }
+        .filter-form { display: flex; gap: 12px; flex-wrap: wrap; }
+        .filter-form input, .filter-form select { background: #0f172a; border: 1px solid #334155; color: #fff; padding: 12px 16px; border-radius: 8px; font-size: 14px; outline: none; }
+        .filter-form input { flex: 2; min-width: 200px; }
+        .filter-form select { flex: 1; min-width: 160px; }
+        .filter-form button { background: #0284c7; color: #fff; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        .filter-form button:hover { background: #0369a1; }
+        .filter-form .reset-btn { background: #475569; color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; font-size: 14px; }
+
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 25px; }
+        .product-card { background: #1e293b; border-radius: 12px; border: 1px solid #334155; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; }
+        .product-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
+        .product-card img { width: 100%; height: 200px; object-fit: cover; background: #0f172a; }
+        .product-info { padding: 20px; flex-grow: 1; }
+        .product-category { font-size: 11px; text-transform: uppercase; color: #38bdf8; font-weight: bold; letter-spacing: 1px; }
+        .product-title { font-size: 18px; margin: 8px 0; font-weight: bold; }
+        .product-title a { color: #f8fafc; text-decoration: none; }
+        .product-price { font-size: 20px; color: #4ade80; font-weight: bold; margin-top: 10px; }
+        
+        .card-actions { padding: 15px 20px; background: #0f172a; border-top: 1px solid #334155; }
+        .view-btn { display: block; text-align: center; background: #38bdf8; color: #0f172a; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: background 0.2s; }
+        .view-btn:hover { background: #7dd3fc; }
+
+        .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 40px; }
+        .pagination a, .pagination span { padding: 10px 16px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: #38bdf8; text-decoration: none; font-weight: bold; }
+        .pagination .active { background: #0284c7; color: #fff; border-color: #0284c7; }
+        .pagination .disabled { color: #475569; pointer-events: none; }
     </style>
 </head>
 <body>
 
-<header>
-    <h1>Model Store</h1>
-    <div>
-        <a href="cart.php">🛒 Cart (<?= isset($_SESSION['cart']) ? array_sum($_SESSION['cart']) : 0; ?>)</a>
-        <?php if (isset($_SESSION['user_id'])): ?>
-            <span style="margin-left: 15px;">Hi, <strong><?= htmlspecialchars($_SESSION['user_name']) ?></strong></span>
-            <a href="logout.php">Logout</a>
-        <?php else: ?>
-            <a href="login.php">Login</a>
-            <a href="register.php">Register</a>
-        <?php endif; ?>
-    </div>
-</header>
+<div class="container">
+    <header>
+        <h1>🏎️ Apex Replica Store</h1>
+        <nav>
+            <a href="cart.php">🛒 Cart</a>
+            <?php if (isset($_SESSION['user_id'])): ?>
+                <a href="my-orders.php">📦 My Orders</a>
+                <?php if (($_SESSION['user_role'] ?? '') === 'admin'): ?>
+                    <a href="admin/orders.php">⚙️ Admin</a>
+                <?php endif; ?>
+                <a href="logout.php">Logout</a>
+            <?php else: ?>
+                <a href="login.php">Login</a>
+            <?php endif; ?>
+        </nav>
+    </header>
 
-<div class="layout">
-    <aside class="sidebar">
-        <h3>Filter Models</h3>
-        <form action="index.php" method="GET">
-            <div class="filter-group">
-                <label>Vehicle Type</label>
-                <select name="type">
-                    <option value="">All Types</option>
-                    <option value="Diecast" <?= $selectedType === 'Diecast' ? 'selected' : '' ?>>Diecast</option>
-                    <option value="RC" <?= $selectedType === 'RC' ? 'selected' : '' ?>>RC Car</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label>Scale</label>
-                <select name="scale">
-                    <option value="">All Scales</option>
-                    <option value="1:18" <?= $selectedScale === '1:18' ? 'selected' : '' ?>>1:18</option>
-                    <option value="1:64" <?= $selectedScale === '1:64' ? 'selected' : '' ?>>1:64</option>
-                    <option value="1:10" <?= $selectedScale === '1:10' ? 'selected' : '' ?>>1:10</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label>Category</label>
-                <select name="category">
-                    <option value="">All Categories</option>
-                    <?php foreach ($categories as $cat): ?>
-                        <option value="<?= $cat['id'] ?>" <?= $selectedCategory == $cat['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <button type="submit" class="filter-btn">Apply Filters</button>
-            <a href="index.php" class="reset-link">Reset All</a>
-        </form>
-    </aside>
-
-    <main class="catalog">
-        <?php if (empty($products)): ?>
-            <p>No models found matching criteria.</p>
-        <?php else: ?>
-            <div class="grid">
-                <?php foreach ($products as $item): ?>
-                    <div class="product-card">
-                        <img src="<?= htmlspecialchars($item['image_url'] ?: 'https://via.placeholder.com/300') ?>" alt="Product">
-                        <div class="card-body">
-                            <div class="tags">
-                                <span class="tag"><?= htmlspecialchars($item['type']) ?></span>
-                                <span class="tag"><?= htmlspecialchars($item['scale']) ?></span>
-                            </div>
-                            <h4 class="product-title">
-                                <a href="product.php?id=<?= $item['id'] ?>"><?= htmlspecialchars($item['title']) ?></a>
-                            </h4>
-                            <div class="product-price">$<?= number_format($item['price'], 2) ?></div>
-                            <?php if ($item['stock'] > 0): ?>
-                                <form action="cart.php" method="POST">
-                                    <input type="hidden" name="product_id" value="<?= $item['id'] ?>">
-                                    <input type="hidden" name="quantity" value="1">
-                                    <button type="submit" name="add_to_cart" class="add-cart-btn">Add to Cart</button>
-                                </form>
-                            <?php else: ?>
-                                <span style="color:#dc2626; font-size:12px; margin-top:5px; font-weight:bold;">Out of Stock</span>
-                            <?php endif; ?>
-                        </div>
-                    </div>
+    <div class="filter-card">
+        <form action="index.php" method="GET" class="filter-form">
+            <input type="text" name="search" placeholder="Search die-cast models..." value="<?= htmlspecialchars($search) ?>">
+            <select name="category">
+                <option value="0">All Categories</option>
+                <?php foreach ($categories as $cat): ?>
+                    <option value="<?= $cat['id'] ?>" <?= $category_id === (int)$cat['id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($cat['name']) ?>
+                    </option>
                 <?php endforeach; ?>
+            </select>
+            <button type="submit">Search</button>
+            <?php if (!empty($search) || $category_id > 0): ?>
+                <a href="index.php" class="reset-btn">Reset</a>
+            <?php endif; ?>
+        </form>
+    </div>
+
+    <div class="product-grid">
+        <?php foreach ($products as $idx => $product): 
+            // Determine image source (local file, database URL, or random online fallback)
+            $img_src = $product['image'];
+            if (empty($img_src) || $img_src === 'placeholder.jpg') {
+                $img_src = $fallback_images[$idx % count($fallback_images)];
+            } elseif (!str_starts_with($img_src, 'http')) {
+                $img_src = 'assets/images/' . $img_src;
+            }
+        ?>
+            <div class="product-card">
+                <a href="product.php?id=<?= $product['id'] ?>">
+                    <img src="<?= htmlspecialchars($img_src) ?>" alt="<?= htmlspecialchars($product['title']) ?>">
+                </a>
+                <div class="product-info">
+                    <span class="product-category"><?= htmlspecialchars($product['category_name'] ?: 'Scale Replica') ?></span>
+                    <h3 class="product-title">
+                        <a href="product.php?id=<?= $product['id'] ?>"><?= htmlspecialchars($product['title']) ?></a>
+                    </h3>
+                    <div class="product-price">$<?= number_format($product['price'], 2) ?></div>
+                </div>
+                <div class="card-actions">
+                    <a href="product.php?id=<?= $product['id'] ?>" class="view-btn">View Details</a>
+                </div>
             </div>
-        <?php endif; ?>
-    </main>
+        <?php endforeach; ?>
+    </div>
+
+    <?php if ($total_pages > 1): ?>
+        <div class="pagination">
+            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                <a href="<?= build_page_url($i, $search, $category_id) ?>" class="<?= $i === $current_page ? 'active' : '' ?>"><?= $i ?></a>
+            <?php endfor; ?>
+        </div>
+    <?php endif; ?>
 </div>
 
 </body>
