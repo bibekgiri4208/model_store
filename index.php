@@ -14,15 +14,13 @@ $products = $stmt->fetchAll();
 ?>
 
 <style>
-    .hero-section { padding: 60px 24px 40px; max-width: 1200px; margin: 0 auto; text-align: left; border-bottom: 1px solid var(--border-color); }
+    .hero-section { padding: 60px 24px 40px; max-width: 1200px; margin: 0 auto; border-bottom: 1px solid var(--border-color); }
     .hero-section h1 { font-size: 32px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 8px; }
     .hero-section p { color: var(--text-muted); font-size: 15px; max-width: 500px; font-weight: 300; }
 
     .catalog-container { max-width: 1200px; margin: 0 auto; padding: 48px 24px 96px; }
-    
     .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 32px; }
     
-    /* Make the entire card linkable */
     .product-card { 
         background: var(--bg-card); 
         border: 1px solid var(--border-color); 
@@ -60,7 +58,6 @@ $products = $stmt->fetchAll();
 <main class="catalog-container">
     <div class="product-grid">
         <?php foreach ($products as $product): ?>
-            <!-- Entire card wrapped in <a> tag -->
             <a href="product.php?id=<?= $product['id'] ?>" class="product-card">
                 <div class="image-wrapper">
                     <span class="badge-scale"><?= htmlspecialchars($product['scale'] ?? '1:18') ?></span>
@@ -70,7 +67,7 @@ $products = $stmt->fetchAll();
                     <span class="category-label"><?= htmlspecialchars($product['category_name'] ?? 'Scale Model') ?></span>
                     <h2 class="product-title"><?= htmlspecialchars($product['title']) ?></h2>
                     <div class="card-footer">
-                        <span class="price">$<?= number_format($product['price'], 2) ?></span>
+                        <span class="price"><?= format_price($product['price']) ?></span>
                         <span class="stock-status"><?= $product['stock'] > 0 ? $product['stock'] . ' available' : 'Out of stock' ?></span>
                     </div>
                 </div>
@@ -80,4 +77,4 @@ $products = $stmt->fetchAll();
 </main>
 
 </body>
-</html>
+</html> 

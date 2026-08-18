@@ -10,12 +10,10 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 $selected_order_id = (int)($_GET['view'] ?? 0);
 
-// Fetch itemized details if a specific order is selected
 $selected_order = null;
 $order_items = [];
 
 if ($selected_order_id > 0) {
-    // Verify order belongs to the logged-in user
     $stmt = $pdo->prepare("SELECT * FROM orders WHERE id = ? AND user_id = ?");
     $stmt->execute([$selected_order_id, $user_id]);
     $selected_order = $stmt->fetch();
@@ -32,7 +30,6 @@ if ($selected_order_id > 0) {
     }
 }
 
-// Fetch all orders list
 $stmt = $pdo->prepare("
     SELECT o.*, COUNT(oi.id) AS total_items 
     FROM orders o 
@@ -69,7 +66,6 @@ $orders = $stmt->fetchAll();
     .status-completed { background: rgba(34, 197, 94, 0.1); color: #22c55e; border-color: rgba(34, 197, 94, 0.2); }
     .status-cancelled { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2); }
 
-    /* Detail View Styling */
     .btn-back { display: inline-block; color: var(--text-muted); text-decoration: none; font-size: 13px; margin-bottom: 24px; transition: color 0.15s ease; }
     .btn-back:hover { color: var(--text-primary); }
 
@@ -88,7 +84,6 @@ $orders = $stmt->fetchAll();
 
 <main class="orders-container">
     <?php if ($selected_order): ?>
-        <!-- Itemized Order Detail View -->
         <a href="my-orders.php" class="btn-back">&larr; Back to Order History</a>
         
         <div class="detail-card">
@@ -123,9 +118,9 @@ $orders = $stmt->fetchAll();
                                     </div>
                                 </div>
                             </td>
-                            <td>$<?= number_format($item['price'], 2) ?></td>
+                            <td><?= format_price($item['price']) ?></td>
                             <td><?= $item['quantity'] ?></td>
-                            <td style="text-align: right; font-weight: 500;">$<?= number_format($item['price'] * $item['quantity'], 2) ?></td>
+                            <td style="text-align: right; font-weight: 500;"><?= format_price($item['price'] * $item['quantity']) ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -136,13 +131,12 @@ $orders = $stmt->fetchAll();
                     <strong>Payment Status:</strong> Paid
                 </div>
                 <div style="font-size: 18px; font-weight: 600;">
-                    Total: $<?= number_format($selected_order['total_amount'], 2) ?>
+                    Total: <?= format_price($selected_order['total_amount']) ?>
                 </div>
             </div>
         </div>
 
     <?php else: ?>
-        <!-- Main Orders List View -->
         <h1 class="page-title">Order History</h1>
 
         <?php if (empty($orders)): ?>
@@ -163,7 +157,7 @@ $orders = $stmt->fetchAll();
                                 <?= htmlspecialchars($order['status']) ?>
                             </span>
                             <div class="order-total">
-                                $<?= number_format($order['total_amount'], 2) ?>
+                                <?= format_price($order['total_amount']) ?>
                             </div>
                         </div>
                     </a>
