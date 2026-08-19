@@ -4,6 +4,8 @@
 
 /* --- Design Tokens --- */
 :root {
+    --font-display: 'Archivo Black', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --bg-main: #08080a;
     --bg-card: #0f0f13;
     --bg-elevated: #17171c;
@@ -83,7 +85,7 @@ body {
     min-height: 100vh;
     background: var(--bg-main);
     color: var(--text-primary);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     line-height: 1.6;
@@ -127,6 +129,7 @@ input, select, textarea, button { font-family: inherit; }
     gap: 11px;
     text-decoration: none;
     flex-shrink: 0;
+    animation: fade-down-in 0.5s var(--ease-out) 0.05s backwards;
 }
 .brand-mark {
     width: 38px;
@@ -140,6 +143,7 @@ input, select, textarea, button { font-family: inherit; }
     font-weight: 800;
     color: var(--on-accent);
     transition: transform var(--transition), background var(--transition);
+    animation: badge-pop 0.5s var(--ease-spring) 0.2s backwards;
 }
 .brand-logo:hover .brand-mark {
     background: var(--accent-hover);
@@ -150,8 +154,9 @@ input, select, textarea, button { font-family: inherit; }
     flex-direction: column;
     line-height: 1.15;
     font-size: 17px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    font-family: var(--font-display);
     color: var(--text-primary);
     transition: color var(--transition);
 }
@@ -430,16 +435,17 @@ html[data-theme="light"] .theme-icon-moon { display: block; }
     border: 1px solid rgba(169, 158, 224, 0.25);
     border-radius: 999px;
     background: var(--accent-soft);
-    animation: fade-up 0.6s var(--ease-out) 0.05s both;
+    animation: hero-eyebrow-in 0.6s var(--ease-out) 0.15s both;
 }
 .hero-section h1 {
     font-size: 48px;
-    font-weight: 700;
+    font-weight: 400;
     letter-spacing: -0.04em;
     line-height: 1.04;
+    font-family: var(--font-display);
     color: var(--text-primary);
     margin-bottom: 16px;
-    animation: fade-up 0.7s var(--ease-out) 0.15s both;
+    animation: hero-title-in 0.9s var(--ease-out) 0.3s both;
 }
 .hero-section p {
     color: var(--text-muted);
@@ -447,7 +453,7 @@ html[data-theme="light"] .theme-icon-moon { display: block; }
     max-width: 460px;
     font-weight: 400;
     line-height: 1.6;
-    animation: fade-up 0.7s var(--ease-out) 0.28s both;
+    animation: fade-up 0.8s var(--ease-out) 0.48s both;
 }
 
 /* --- Filter Bar --- */
@@ -455,6 +461,7 @@ html[data-theme="light"] .theme-icon-moon { display: block; }
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 24px 44px;
+    animation: fade-up 0.7s var(--ease-out) 0.55s both;
 }
 .filter-form {
     display: flex;
@@ -2168,6 +2175,18 @@ tbody tr:hover { background: var(--hover-bg); }
 @keyframes header-in {
     from { opacity: 0; }
     to { opacity: 1; }
+}
+@keyframes fade-down-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes hero-eyebrow-in {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes hero-title-in {
+    from { opacity: 0; transform: translateY(30px) scale(0.97); letter-spacing: -0.1em; }
+    to { opacity: 1; transform: translateY(0) scale(1); letter-spacing: -0.04em; }
 }
 @keyframes slide-in-right {
     from { opacity: 0; transform: translateX(100vw); }

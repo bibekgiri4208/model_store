@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (e) {}
         })();
     </script>
-<link rel="stylesheet" href="assets/css/style.css?v=17">
+<link rel="stylesheet" href="assets/css/style.css?v=22">
     <script src="assets/js/app.js" defer></script>
 </head>
 <body class="auth-page">

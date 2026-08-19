@@ -80,7 +80,7 @@ $products = $stmt->fetchAll();
             } catch (e) {}
         })();
     </script>
-<link rel="stylesheet" href="../assets/css/style.css?v=17">
+<link rel="stylesheet" href="../assets/css/style.css?v=22">
 </head>
 <body>
 <div class="admin-container">
