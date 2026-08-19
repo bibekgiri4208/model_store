@@ -292,6 +292,91 @@
         });
     }
 
+    /* --- AJAX pagination: swap only the grid, nav bar never reloads --- */
+    function initAjaxPagination() {
+        var catalog = document.getElementById('catalog');
+        if (!catalog) return;
+
+        function fetchPage(url, dir) {
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function(res) {
+                    if (!res.ok) throw new Error('Failed to load page');
+                    return res.text();
+                })
+                .then(function(html) {
+                    var doc = new DOMParser().parseFromString(html, 'text/html');
+
+                    var grid = document.getElementById('catalog-grid');
+                    var newGrid = doc.getElementById('catalog-grid');
+                    if (!grid || !newGrid) {
+                        window.location.href = url;
+                        return;
+                    }
+
+                    grid.classList.remove('page-next', 'page-prev');
+                    grid.innerHTML = newGrid.innerHTML;
+                    void grid.offsetWidth;
+                    if (dir > 0) {
+                        grid.classList.add('page-next');
+                    } else if (dir < 0) {
+                        grid.classList.add('page-prev');
+                    }
+
+                    var pagination = document.getElementById('pagination');
+                    var newPagination = doc.getElementById('pagination');
+                    if (pagination && newPagination) {
+                        pagination.innerHTML = newPagination.innerHTML;
+                    }
+
+                    var info = document.querySelector('.pagination-info');
+                    var newInfo = doc.querySelector('.pagination-info');
+                    if (info && newInfo) {
+                        info.innerHTML = newInfo.innerHTML;
+                    }
+
+                    initAjaxAddToCart();
+                    initScrollAnimations();
+                })
+                .catch(function() {
+                    window.location.href = url;
+                });
+        }
+
+        catalog.addEventListener('click', function(e) {
+            var link = e.target.closest('a.page-btn');
+            if (!link) return;
+            var href = link.getAttribute('href');
+            if (!href) return;
+
+            var params = new URLSearchParams(href.split('?')[1] || '');
+            var newPage = parseInt(params.get('page'), 10) || 1;
+            var currentPage = parseInt(new URLSearchParams(window.location.search).get('page'), 10) || 1;
+            var dir = newPage > currentPage ? 1 : (newPage < currentPage ? -1 : 0);
+
+            try {
+                sessionStorage.setItem('catalogPage', String(currentPage));
+            } catch (err) {}
+
+            e.preventDefault();
+            fetchPage(href, dir);
+            history.pushState({ page: newPage }, '', href);
+        });
+
+        window.addEventListener('popstate', function() {
+            var params = new URLSearchParams(window.location.search);
+            var newPage = parseInt(params.get('page'), 10) || 1;
+            var lastPage = 0;
+            try {
+                lastPage = parseInt(sessionStorage.getItem('catalogPage'), 10) || 0;
+            } catch (err) {}
+            var dir = newPage > lastPage ? 1 : (newPage < lastPage ? -1 : 0);
+            try {
+                sessionStorage.setItem('catalogPage', String(newPage));
+            } catch (err) {}
+            fetchPage(window.location.href, dir);
+        });
+    }
+
     /* --- Header shadow on scroll --- */
     function initHeaderScroll() {
         var header = document.querySelector('.site-header');
@@ -336,6 +421,7 @@
         initAjaxAddToCart();
         initPaginationLinks();
         initPaginationScroll();
+        initAjaxPagination();
         initCartStepper();
         initScrollAnimations();
         initQtyValidation();
