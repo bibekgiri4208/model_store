@@ -22,16 +22,25 @@ $recent_orders = $stmt->fetchAll();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Overview - Apex Scale Models</title>
+    <title>Admin Overview - Jester Scale Models</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../assets/css/style.css?v=4">
+        <script>
+        (function() {
+            try {
+                var stored = localStorage.getItem('theme');
+                var theme = stored || (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+                document.documentElement.setAttribute('data-theme', theme);
+            } catch (e) {}
+        })();
+    </script>
+<link rel="stylesheet" href="../assets/css/style.css?v=11">
 </head>
 <body>
 <div class="admin-container">
     <header class="admin-header">
-        <h1>Apex Admin</h1>
+        <h1>Jester Admin</h1>
         <nav class="admin-nav">
             <a href="dashboard.php" class="active">Overview</a>
             <a href="products.php">Products</a>

@@ -1,6 +1,5 @@
 <?php
 require_once 'config/db.php';
-include 'includes/header.php';
 
 $product_id = intval($_GET['id'] ?? 0);
 
@@ -24,9 +23,17 @@ if (!$product) {
 }
 ?>
 
+<?php include 'includes/header.php'; ?>
+
 <div class="product-detail-container">
     <div>
-        <a href="index.php" class="btn-back">&larr; Back to Catalog</a>
+        <a href="index.php" class="btn-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Back to Catalog
+        </a>
         <div class="product-image-frame">
             <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['title']) ?>" class="product-detail-image">
         </div>

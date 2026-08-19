@@ -1,6 +1,5 @@
 <?php
 require_once 'config/db.php';
-include 'includes/header.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -42,9 +41,17 @@ $stmt->execute([$user_id]);
 $orders = $stmt->fetchAll();
 ?>
 
+<?php include 'includes/header.php'; ?>
+
 <main class="orders-container">
     <?php if ($selected_order): ?>
-        <a href="my-orders.php" class="btn-back">&larr; Back to Order History</a>
+        <a href="my-orders.php" class="btn-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Back to Order History
+        </a>
 
         <?php
             $subtotal = 0;

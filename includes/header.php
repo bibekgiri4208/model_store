@@ -33,11 +33,20 @@ if (isset($pdo)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apex Scale Models</title>
+    <title>Jester Scale Models</title>
+    <script>
+        (function() {
+            try {
+                var stored = localStorage.getItem('theme');
+                var theme = stored || (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+                document.documentElement.setAttribute('data-theme', theme);
+            } catch (e) {}
+        })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= $base_path ?>assets/css/style.css?v=4">
+    <link rel="stylesheet" href="<?= $base_path ?>assets/css/style.css?v=11">
     <script src="<?= $base_path ?>assets/js/app.js" defer></script>
 </head>
 <body>
@@ -45,12 +54,29 @@ if (isset($pdo)) {
 <header class="site-header">
     <div class="header-inner">
         <a href="<?= $base_path ?>index.php" class="brand-logo">
-            <span class="brand-mark" aria-hidden="true">A</span>
+            <span class="brand-mark" aria-hidden="true">J</span>
             <span class="brand-text">
-                Apex
+                Jester
                 <span class="brand-sub">Scale Models</span>
             </span>
         </a>
+
+        <button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle color theme">
+            <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+        </button>
 
         <button class="nav-toggle" aria-label="Toggle navigation">&#9776;</button>
 

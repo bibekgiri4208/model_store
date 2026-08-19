@@ -1,9 +1,33 @@
 /* ============================================
-   Apex Scale Models - UI Enhancements
+   Jester Scale Models - UI Enhancements
    ============================================ */
 
 (function() {
     'use strict';
+
+    document.documentElement.classList.add('js');
+
+    /* --- Quantity stepper (cart) --- */
+    function initCartStepper() {
+        var forms = document.querySelectorAll('[data-cart-qty]');
+        forms.forEach(function(form) {
+            var input = form.querySelector('.qty-input');
+            if (!input) return;
+
+            form.querySelectorAll('.qty-step').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var dir = parseInt(btn.getAttribute('data-dir'), 10);
+                    var val = parseInt(input.value, 10);
+                    if (isNaN(val)) val = 1;
+                    val += dir;
+                    if (val < 1) val = 1;
+                    if (val > 999) val = 999;
+                    input.value = val;
+                    form.submit();
+                });
+            });
+        });
+    }
 
     /* --- Mobile Navigation Toggle --- */
     function initMobileNav() {
@@ -46,9 +70,9 @@
         }, 3000);
     }
 
-    /* --- Show toast for add-to-cart success --- */
+    /* --- Show toast for add-to-cart success (non-AJAX forms) --- */
     function initCartToast() {
-        var addToCartForms = document.querySelectorAll('form[action="cart.php"]');
+        var addToCartForms = document.querySelectorAll('form[action="cart.php"]:not([data-ajax-add])');
         addToCartForms.forEach(function(form) {
             var actionInput = form.querySelector('input[name="action"]');
             if (actionInput && actionInput.value === 'add') {
@@ -67,10 +91,66 @@
         });
     }
 
+    /* --- Set cart badge count in nav --- */
+    function setCartBadge(count) {
+        var link = document.querySelector('.nav-cart');
+        var badge = link ? link.querySelector('.cart-badge') : null;
+        if (count > 0) {
+            if (!badge && link) {
+                badge = document.createElement('span');
+                badge.className = 'cart-badge';
+                link.appendChild(badge);
+            }
+            if (badge) badge.textContent = count;
+        } else if (badge) {
+            badge.remove();
+        }
+    }
+
+    /* --- AJAX add-to-cart (home cards: toast only, no redirect) --- */
+    function initAjaxAddToCart() {
+        var forms = document.querySelectorAll('form[data-ajax-add]');
+        forms.forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                var card = form.closest('.product-card');
+                var title = '';
+                if (card) {
+                    var titleEl = card.querySelector('.product-title');
+                    if (titleEl) title = titleEl.textContent.trim();
+                }
+
+                var btn = form.querySelector('button[type="submit"]');
+                if (btn) btn.disabled = true;
+
+                fetch(form.getAttribute('action'), {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: new FormData(form)
+                }).then(function(res) {
+                    if (!res.ok) throw new Error('Request failed');
+                    return res.json().catch(function() { return null; });
+                }).then(function(data) {
+                    if (data && data.success) {
+                        showToast(title ? title + ' added to cart' : 'Added to cart', 'success');
+                        if (typeof data.cart_count === 'number') setCartBadge(data.cart_count);
+                    } else {
+                        showToast('Could not add to cart. Please try again.', 'error');
+                    }
+                }).catch(function() {
+                    showToast('Could not add to cart. Please try again.', 'error');
+                }).then(function() {
+                    if (btn) btn.disabled = false;
+                });
+            });
+        });
+    }
+
     /* --- Animate elements on scroll --- */
     function initScrollAnimations() {
         var animateElements = document.querySelectorAll(
-            '.product-card, .order-card, .metric-card, .detail-card, .summary-card, .status-container, .auth-card'
+            '.product-card, .order-card, .metric-card, .detail-card, .summary-card, .status-container, .auth-card, .empty-state'
         );
         if (!animateElements.length) return;
 
@@ -84,6 +164,19 @@
         }, { threshold: 0.1 });
 
         animateElements.forEach(function(el) {
+            if (el.classList.contains('metric-card')) {
+                el.classList.add('animate-in-zoom');
+            } else if (el.classList.contains('detail-card')) {
+                el.classList.add('animate-in-left');
+            } else if (el.classList.contains('summary-card')) {
+                el.classList.add('animate-in-right');
+            } else {
+                el.classList.add('animate-in');
+            }
+            var parent = el.parentElement;
+            var siblings = parent ? Array.prototype.slice.call(parent.children) : [el];
+            var idx = siblings.indexOf(el);
+            if (idx > 0) el.style.animationDelay = Math.min(idx * 0.07, 0.6) + 's';
             observer.observe(el);
         });
     }
@@ -130,14 +223,6 @@
         });
     }
 
-    /* --- Stagger animation for product grid --- */
-    function initGridStagger() {
-        var cards = document.querySelectorAll('.product-card');
-        cards.forEach(function(card, i) {
-            card.style.animationDelay = (i * 0.05) + 's';
-        });
-    }
-
     /* --- Categories dropdown (click toggle, mobile friendly) --- */
     function initNavDropdown() {
         var dropdowns = document.querySelectorAll('.nav-dropdown');
@@ -179,6 +264,22 @@
         onScroll();
     }
 
+    /* --- Theme toggle --- */
+    function initThemeToggle() {
+        var btn = document.querySelector('[data-theme-toggle]');
+        if (!btn) return;
+
+        btn.addEventListener('click', function() {
+            var root = document.documentElement;
+            var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            root.setAttribute('data-theme', next);
+            btn.setAttribute('aria-pressed', next === 'light');
+            try {
+                localStorage.setItem('theme', next);
+            } catch (e) {}
+        });
+    }
+
     /* --- Initialize everything on DOM ready --- */
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
@@ -190,7 +291,10 @@
         initMobileNav();
         initNavDropdown();
         initHeaderScroll();
+        initThemeToggle();
         initCartToast();
+        initAjaxAddToCart();
+        initCartStepper();
         initScrollAnimations();
         initQtyValidation();
         initDeleteConfirm();

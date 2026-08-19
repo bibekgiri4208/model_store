@@ -1,7 +1,7 @@
 <footer class="site-footer">
     <div class="footer-inner">
         <div class="footer-brand">
-            <span class="footer-logo">Apex Scale Models</span>
+            <span class="footer-logo">Jester Scale Models</span>
             <p>Precision-engineered diecast and resin miniatures for collector purists.</p>
         </div>
 
@@ -31,7 +31,7 @@
     </div>
 
     <div class="footer-bottom">
-        <span>&copy; <?= date('Y') ?> Apex Scale Models. All rights reserved.</span>
+        <span>&copy; <?= date('Y') ?> Jester Scale Models. All rights reserved.</span>
         <span>Made for collectors.</span>
     </div>
 </footer>

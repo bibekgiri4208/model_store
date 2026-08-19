@@ -118,7 +118,7 @@ $products = $stmt->fetchAll();
                             <span class="price"><?= format_price($product['price']) ?></span>
                             
                             <!-- Add to Cart Form -->
-                            <form action="cart.php" method="POST" style="margin: 0;">
+                            <form action="cart.php" method="POST" style="margin: 0;" data-ajax-add>
                                 <input type="hidden" name="action" value="add">
                                 <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
                                 <input type="hidden" name="quantity" value="1">

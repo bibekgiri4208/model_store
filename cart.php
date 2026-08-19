@@ -1,6 +1,5 @@
 <?php
 require_once 'config/db.php';
-include 'includes/header.php';
 
 // Initialize session cart if not set
 if (!isset($_SESSION['cart'])) {
@@ -37,6 +36,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
+        if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') {
+            header('Content-Type: application/json');
+            $count = 0;
+            foreach ($_SESSION['cart'] as $item) {
+                $count += (int)$item['quantity'];
+            }
+            echo json_encode(['success' => true, 'cart_count' => $count]);
+            exit;
+        }
         header('Location: cart.php');
         exit;
     }
@@ -64,23 +72,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Calculate grand total
+// Calculate grand total and total item count
 $grand_total = 0;
+$total_items = 0;
 foreach ($_SESSION['cart'] as $item) {
     $grand_total += $item['price'] * $item['quantity'];
+    $total_items += $item['quantity'];
 }
 ?>
+
+<?php include 'includes/header.php'; ?>
 
 <div class="cart-wrapper">
     <?php if (empty($_SESSION['cart'])): ?>
         <div class="empty-state">
-            <div class="empty-state-icon">&#128722;</div>
-            <p>Your shopping cart is currently empty.</p>
-            <a href="index.php" class="btn btn-primary">Explore Scale Models</a>
+            <div class="empty-state-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+            </div>
+            <h3 class="empty-state-title">Your cart is empty</h3>
+            <p>Looks like you haven't added any models yet. Explore the collection and find your next masterpiece.</p>
+            <div class="empty-state-actions">
+                <a href="index.php" class="btn btn-primary">Explore Scale Models</a>
+            </div>
         </div>
     <?php else: ?>
         <div class="cart-column">
-            <h2 class="section-title">Shopping Cart <span class="cart-count"><?= count($_SESSION['cart']) ?></span></h2>
+            <div class="cart-header">
+                <h2 class="section-title">
+                    Shopping Cart
+                    <span class="cart-count"><?= $total_items ?> <?= $total_items === 1 ? 'item' : 'items' ?></span>
+                </h2>
+                <a href="index.php" class="cart-continue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                    Continue Shopping
+                </a>
+            </div>
 
             <div class="cart-col-head">
                 <span>Product</span>
@@ -90,7 +123,7 @@ foreach ($_SESSION['cart'] as $item) {
             </div>
 
             <div class="cart-list">
-                <?php foreach ($_SESSION['cart'] as $id => $item): 
+                <?php foreach ($_SESSION['cart'] as $id => $item):
                     $subtotal = $item['price'] * $item['quantity'];
                 ?>
                     <div class="cart-item">
@@ -105,10 +138,14 @@ foreach ($_SESSION['cart'] as $item) {
                             </div>
                         </div>
 
-                        <form method="POST" action="cart.php" class="qty-form">
+                        <form method="POST" action="cart.php" class="qty-form" data-cart-qty>
                             <input type="hidden" name="action" value="update">
                             <input type="hidden" name="product_id" value="<?= $id ?>">
-                            <input type="number" name="quantity" value="<?= $item['quantity'] ?>" min="1" class="qty-input" aria-label="Quantity">
+                            <div class="qty-stepper">
+                                <button type="button" class="qty-step" data-dir="-1" aria-label="Decrease quantity">&#8722;</button>
+                                <input type="number" name="quantity" value="<?= $item['quantity'] ?>" min="1" max="999" class="qty-input" aria-label="Quantity">
+                                <button type="button" class="qty-step" data-dir="1" aria-label="Increase quantity">&#43;</button>
+                            </div>
                             <button type="submit" class="qty-update">Update</button>
                         </form>
 
@@ -117,25 +154,32 @@ foreach ($_SESSION['cart'] as $item) {
                         <form method="POST" action="cart.php" class="cart-item-remove">
                             <input type="hidden" name="action" value="remove">
                             <input type="hidden" name="product_id" value="<?= $id ?>">
-                            <button type="submit" class="btn-remove" title="Remove item" aria-label="Remove item">&times;</button>
+                            <button type="submit" class="btn-remove" title="Remove item" aria-label="Remove item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                                </svg>
+                                <span class="btn-remove-label">Remove</span>
+                            </button>
                         </form>
                     </div>
                 <?php endforeach; ?>
             </div>
         </div>
-        </div>
 
         <!-- Order Summary Sidebar & Checkout Form Binding -->
         <div class="summary-card">
-            <h3 class="section-title" style="font-size: 16px; margin-bottom: 16px;">Summary</h3>
-            
+            <h3 class="section-title summary-title">Order Summary</h3>
+
             <div class="summary-row">
-                <span>Items Subtotal</span>
+                <span>Items Subtotal (<?= $total_items ?>)</span>
                 <span><?= format_price($grand_total) ?></span>
             </div>
             <div class="summary-row">
                 <span>Estimated Shipping</span>
-                <span>Free</span>
+                <span class="summary-free">Free</span>
             </div>
 
             <div class="summary-row total">
@@ -143,14 +187,29 @@ foreach ($_SESSION['cart'] as $item) {
                 <span><?= format_price($grand_total) ?></span>
             </div>
 
-            <?php 
+            <p class="summary-note">Free shipping on all orders. Pay with eSewa or Cash on Delivery.</p>
+
+            <?php
                 $cart_keys = array_keys($_SESSION['cart']);
                 $first_product_id = reset($cart_keys);
             ?>
             <form action="checkout.php" method="GET">
                 <input type="hidden" name="id" value="<?= $first_product_id ?>">
-                <button type="submit" class="btn btn-primary btn-lg btn-block" style="margin-top: 20px;">Proceed to Checkout</button>
+                <button type="submit" class="btn btn-primary btn-lg btn-block btn-checkout">
+                    Proceed to Checkout
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </button>
             </form>
+            <a href="index.php" class="btn btn-ghost btn-block btn-cart-continue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Continue Shopping
+            </a>
         </div>
     <?php endif; ?>
 </div>

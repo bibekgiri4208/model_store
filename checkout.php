@@ -1,6 +1,5 @@
 <?php
 require_once 'config/db.php';
-include 'includes/header.php';
 
 // Require login to check out
 if (!isset($_SESSION['user_id'])) {
@@ -164,7 +163,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
                     <link rel="preconnect" href="https://fonts.googleapis.com">
                     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
                     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
-                    <link rel="stylesheet" href="assets/css/style.css?v=4">
+                        <script>
+        (function() {
+            try {
+                var stored = localStorage.getItem('theme');
+                var theme = stored || (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+                document.documentElement.setAttribute('data-theme', theme);
+            } catch (e) {}
+        })();
+    </script>
+<link rel="stylesheet" href="assets/css/style.css?v=11">
                 </head>
                 <body class="loader-page">
                     <div class="loader-content">
@@ -211,8 +219,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
 }
 ?>
 
+<?php include 'includes/header.php'; ?>
+
 <div class="checkout-wrapper">
     <div>
+        <?php
+        $back_url = 'cart.php';
+        $back_label = 'Back to Cart';
+        if ($product_id > 0 && empty($cart_items)) {
+            $back_url = 'product.php?id=' . $product_id;
+            $back_label = 'Back to Product';
+        }
+        ?>
+        <a href="<?= $back_url ?>" class="btn-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <?= $back_label ?>
+        </a>
+
         <h2 class="section-title">Shipping & Payment Details</h2>
 
         <?php if (!empty($error)): ?>
