@@ -133,7 +133,7 @@ $products = $stmt->fetchAll();
             </p>
         <?php endif; ?>
 
-        <div class="product-grid">
+        <div class="product-grid" id="catalog-grid">
             <?php foreach ($products as $product): ?>
                 <div class="product-card">
                     <!-- Image click goes to product.php -->

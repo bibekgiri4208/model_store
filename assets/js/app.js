@@ -270,6 +270,7 @@
         if (!params.has('page')) return;
 
         var catalog = document.getElementById('catalog');
+        var grid = document.getElementById('catalog-grid') || catalog;
         var scrollTarget = document.getElementById('pagination') || catalog;
         if (!catalog) return;
 
@@ -284,9 +285,9 @@
         requestAnimationFrame(function() {
             scrollTarget.scrollIntoView({ behavior: 'instant', block: 'start' });
             if (dir > 0) {
-                catalog.classList.add('page-next');
+                grid.classList.add('page-next');
             } else if (dir < 0) {
-                catalog.classList.add('page-prev');
+                grid.classList.add('page-prev');
             }
         });
     }

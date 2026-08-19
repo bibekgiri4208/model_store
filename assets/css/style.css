@@ -2181,8 +2181,8 @@ tbody tr:hover { background: var(--hover-bg); }
 .page-next { animation: slide-in-right 0.65s var(--ease-out) both; }
 .page-prev { animation: slide-in-left 0.65s var(--ease-out) both; }
 
-#catalog.page-next .animate-in,
-#catalog.page-prev .animate-in {
+#catalog-grid.page-next .animate-in,
+#catalog-grid.page-prev .animate-in {
     animation: none;
     opacity: 1;
 }
