@@ -252,6 +252,45 @@
         });
     }
 
+    /* --- Directional slide when navigating between catalog pages --- */
+    function initPaginationLinks() {
+        var currentPage = parseInt(new URLSearchParams(window.location.search).get('page'), 10) || 1;
+        var links = document.querySelectorAll('a[href*="page="]');
+        links.forEach(function(link) {
+            link.addEventListener('click', function() {
+                try {
+                    sessionStorage.setItem('catalogPage', String(currentPage));
+                } catch (e) {}
+            });
+        });
+    }
+
+    function initPaginationScroll() {
+        var params = new URLSearchParams(window.location.search);
+        if (!params.has('page')) return;
+
+        var catalog = document.getElementById('catalog');
+        var scrollTarget = document.getElementById('pagination') || catalog;
+        if (!catalog) return;
+
+        var newPage = parseInt(params.get('page'), 10) || 1;
+        var lastPage = 0;
+        try {
+            lastPage = parseInt(sessionStorage.getItem('catalogPage'), 10) || 0;
+        } catch (e) {}
+
+        var dir = newPage > lastPage ? 1 : (newPage < lastPage ? -1 : 0);
+
+        requestAnimationFrame(function() {
+            scrollTarget.scrollIntoView({ behavior: 'instant', block: 'start' });
+            if (dir > 0) {
+                catalog.classList.add('page-next');
+            } else if (dir < 0) {
+                catalog.classList.add('page-prev');
+            }
+        });
+    }
+
     /* --- Header shadow on scroll --- */
     function initHeaderScroll() {
         var header = document.querySelector('.site-header');
@@ -294,6 +333,8 @@
         initThemeToggle();
         initCartToast();
         initAjaxAddToCart();
+        initPaginationLinks();
+        initPaginationScroll();
         initCartStepper();
         initScrollAnimations();
         initQtyValidation();

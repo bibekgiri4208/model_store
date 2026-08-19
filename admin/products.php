@@ -80,7 +80,7 @@ $products = $stmt->fetchAll();
             } catch (e) {}
         })();
     </script>
-<link rel="stylesheet" href="../assets/css/style.css?v=11">
+<link rel="stylesheet" href="../assets/css/style.css?v=16">
 </head>
 <body>
 <div class="admin-container">
@@ -178,6 +178,9 @@ $products = $stmt->fetchAll();
                 <tbody>
                     <?php foreach ($products as $p): 
                         $img = !empty($p['image_url']) ? $p['image_url'] : '../assets/images/placeholder.jpg';
+                        if (!empty($img) && strpos($img, 'http') !== 0 && strpos($img, 'data:') !== 0 && strpos($img, '/') !== 0) {
+                            $img = '../' . $img;
+                        }
                     ?>
                         <tr>
                             <td><img src="<?= htmlspecialchars($img) ?>" class="img-thumb" alt=""></td>

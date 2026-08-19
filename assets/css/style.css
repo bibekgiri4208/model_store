@@ -76,7 +76,7 @@
 
 /* --- Reset & Base --- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: clip; }
 body {
     display: flex;
     flex-direction: column;
@@ -580,11 +580,13 @@ html[data-theme="light"] .theme-icon-moon { display: block; }
     margin: 0 auto;
     padding: 56px 24px 128px;
     width: 100%;
+    scroll-margin-top: 76px;
 }
 .product-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
     gap: 28px;
+    margin-top: 32px;
 }
 .product-card {
     background: var(--bg-card);
@@ -1300,6 +1302,7 @@ input[type="file"].form-control::-webkit-file-upload-button:hover { border-color
     gap: 8px;
     margin-top: 48px;
     flex-wrap: wrap;
+    scroll-margin-top: 80px;
 }
 .page-btn {
     display: inline-flex;
@@ -2165,6 +2168,23 @@ tbody tr:hover { background: var(--hover-bg); }
 @keyframes header-in {
     from { opacity: 0; }
     to { opacity: 1; }
+}
+@keyframes slide-in-right {
+    from { opacity: 0; transform: translateX(100vw); }
+    to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slide-in-left {
+    from { opacity: 0; transform: translateX(-100vw); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.page-next { animation: slide-in-right 0.65s var(--ease-out) both; }
+.page-prev { animation: slide-in-left 0.65s var(--ease-out) both; }
+
+#catalog.page-next .animate-in,
+#catalog.page-prev .animate-in {
+    animation: none;
+    opacity: 1;
 }
 
 .animate-in { animation: fade-up 0.6s var(--ease-out) both; }

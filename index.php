@@ -89,7 +89,7 @@ $products = $stmt->fetchAll();
     </form>
 </div>
 
-<main class="catalog-container">
+<main class="catalog-container" id="catalog">
     <?php if (empty($products)): ?>
         <div class="empty-state">
             <div class="empty-state-icon">&#128269;</div>
@@ -97,6 +97,42 @@ $products = $stmt->fetchAll();
             <a href="index.php" class="btn btn-primary">Clear Filters</a>
         </div>
     <?php else: ?>
+        <?php if ($total_pages > 1): ?>
+            <?php
+            $qs = [];
+            if (!empty($search))   $qs['q'] = $search;
+            if (!empty($scale))    $qs['scale'] = $scale;
+            if (!empty($category)) $qs['category'] = $category;
+            $page_url = function($p) use ($qs) {
+                return 'index.php?' . http_build_query(array_merge($qs, ['page' => $p]));
+            };
+            ?>
+            <nav class="pagination" id="pagination" aria-label="Catalog pages">
+                <?php if ($page > 1): ?>
+                    <a class="page-btn" href="<?= htmlspecialchars($page_url($page - 1)) ?>">&#8592; Prev</a>
+                <?php else: ?>
+                    <span class="page-btn page-btn-disabled">&#8592; Prev</span>
+                <?php endif; ?>
+
+                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                    <?php if ($i === $page): ?>
+                        <span class="page-btn page-btn-active"><?= $i ?></span>
+                    <?php else: ?>
+                        <a class="page-btn" href="<?= htmlspecialchars($page_url($i)) ?>"><?= $i ?></a>
+                    <?php endif; ?>
+                <?php endfor; ?>
+
+                <?php if ($page < $total_pages): ?>
+                    <a class="page-btn" href="<?= htmlspecialchars($page_url($page + 1)) ?>">Next &#8594;</a>
+                <?php else: ?>
+                    <span class="page-btn page-btn-disabled">Next &#8594;</span>
+                <?php endif; ?>
+            </nav>
+            <p class="pagination-info">
+                Showing <?= $offset + 1 ?>–<?= min($offset + $per_page, $total_products) ?> of <?= $total_products ?> models
+            </p>
+        <?php endif; ?>
+
         <div class="product-grid">
             <?php foreach ($products as $product): ?>
                 <div class="product-card">
@@ -129,42 +165,6 @@ $products = $stmt->fetchAll();
                 </div>
             <?php endforeach; ?>
         </div>
-
-        <?php if ($total_pages > 1): ?>
-            <?php
-            $qs = [];
-            if (!empty($search))   $qs['q'] = $search;
-            if (!empty($scale))    $qs['scale'] = $scale;
-            if (!empty($category)) $qs['category'] = $category;
-            $page_url = function($p) use ($qs) {
-                return 'index.php?' . http_build_query(array_merge($qs, ['page' => $p]));
-            };
-            ?>
-            <nav class="pagination" aria-label="Catalog pages">
-                <?php if ($page > 1): ?>
-                    <a class="page-btn" href="<?= htmlspecialchars($page_url($page - 1)) ?>">&#8592; Prev</a>
-                <?php else: ?>
-                    <span class="page-btn page-btn-disabled">&#8592; Prev</span>
-                <?php endif; ?>
-
-                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                    <?php if ($i === $page): ?>
-                        <span class="page-btn page-btn-active"><?= $i ?></span>
-                    <?php else: ?>
-                        <a class="page-btn" href="<?= htmlspecialchars($page_url($i)) ?>"><?= $i ?></a>
-                    <?php endif; ?>
-                <?php endfor; ?>
-
-                <?php if ($page < $total_pages): ?>
-                    <a class="page-btn" href="<?= htmlspecialchars($page_url($page + 1)) ?>">Next &#8594;</a>
-                <?php else: ?>
-                    <span class="page-btn page-btn-disabled">Next &#8594;</span>
-                <?php endif; ?>
-            </nav>
-            <p class="pagination-info">
-                Showing <?= $offset + 1 ?>–<?= min($offset + $per_page, $total_products) ?> of <?= $total_products ?> models
-            </p>
-        <?php endif; ?>
     <?php endif; ?>
 </main>
 

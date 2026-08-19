@@ -48,7 +48,7 @@ $orders = $stmt->fetchAll();
             } catch (e) {}
         })();
     </script>
-<link rel="stylesheet" href="../assets/css/style.css?v=11">
+<link rel="stylesheet" href="../assets/css/style.css?v=16">
 </head>
 <body>
 <div class="admin-container">
