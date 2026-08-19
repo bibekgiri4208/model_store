@@ -61,6 +61,16 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
 // Fetch All Products with Category Name
 $stmt = $pdo->query("SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id ORDER BY p.id DESC");
 $products = $stmt->fetchAll();
+
+// List available local asset images for the picker
+$asset_dir = '../assets/images/';
+$assets = [];
+if (is_dir($asset_dir)) {
+    foreach (glob($asset_dir . '*.{jpg,jpeg,png,webp,gif}', GLOB_BRACE) as $file) {
+        $assets[] = basename($file);
+    }
+    sort($assets);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -145,8 +155,25 @@ $products = $stmt->fetchAll();
                 </div>
 
                 <div class="form-group">
-                    <label>Image URL</label>
-                    <input type="text" name="image_url" value="<?= htmlspecialchars($edit_product['image_url'] ?? '') ?>">
+                    <label>Asset Image <span style="font-weight:400;color:var(--text-muted);">(pick from the image library)</span></label>
+                    <select id="asset_picker" class="form-control" onchange="setAssetImage(this.value)">
+                        <option value="">-- No asset selected --</option>
+                        <?php foreach ($assets as $a): ?>
+                            <option value="assets/images/<?= htmlspecialchars($a) ?>" <?= !empty($edit_product['image_url']) && $edit_product['image_url'] === 'assets/images/' . $a ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($a) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Image URL <span style="font-weight:400;color:var(--text-muted);">(or paste an external URL — picking an asset fills this)</span></label>
+                    <input type="text" name="image_url" id="image_url_input" value="<?= htmlspecialchars($edit_product['image_url'] ?? '') ?>" oninput="updateImagePreview()" placeholder="https://example.com/car.jpg">
+                </div>
+
+                <div class="form-group">
+                    <label>Image Preview</label>
+                    <img id="image_preview" src="" alt="Preview" style="max-width:160px; border-radius:10px; display:none; border:1px solid var(--border);">
                 </div>
 
                 <div class="form-group">
@@ -199,5 +226,36 @@ $products = $stmt->fetchAll();
         </div>
     </div>
 </div>
+<script>
+function setAssetImage(val) {
+    document.getElementById('image_url_input').value = val || '';
+    updateImagePreview();
+}
+function updateImagePreview() {
+    var input = document.getElementById('image_url_input');
+    var img = document.getElementById('image_preview');
+    var url = (input.value || '').trim();
+    if (!url) { img.style.display = 'none'; img.src = ''; return; }
+    var src = url;
+    if (url.indexOf('http') !== 0 && url.indexOf('data:') !== 0 && url.indexOf('/') !== 0) {
+        src = '../' + url;
+    }
+    img.src = src;
+    img.style.display = 'inline-block';
+}
+(function () {
+    var input = document.getElementById('image_url_input');
+    var picker = document.getElementById('asset_picker');
+    if (input && input.value) {
+        var match = input.value;
+        if (match.indexOf('assets/images/') === 0) {
+            for (var i = 0; i < picker.options.length; i++) {
+                if (picker.options[i].value === match) { picker.selectedIndex = i; break; }
+            }
+        }
+    }
+    updateImagePreview();
+})();
+</script>
 </body>
 </html>
