@@ -377,6 +377,46 @@
         });
     }
 
+    /* --- Product image lightbox (product detail page) --- */
+    function initProductLightbox() {
+        var openBtn = document.querySelector('[data-lightbox-open]');
+        var lightbox = document.getElementById('product-lightbox');
+        if (!openBtn || !lightbox) return;
+
+        var img = lightbox.querySelector('.lightbox-image');
+        var caption = lightbox.querySelector('.lightbox-caption');
+
+        function open() {
+            img.src = openBtn.getAttribute('data-image');
+            img.alt = openBtn.getAttribute('data-title') || '';
+            caption.textContent = openBtn.getAttribute('data-title') || '';
+            lightbox.classList.add('open');
+            lightbox.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('lightbox-open');
+        }
+
+        function close() {
+            lightbox.classList.remove('open');
+            lightbox.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('lightbox-open');
+            img.src = '';
+        }
+
+        openBtn.addEventListener('click', open);
+
+        lightbox.addEventListener('click', function(e) {
+            if (e.target === lightbox || e.target.closest('[data-lightbox-close]')) {
+                close();
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && lightbox.classList.contains('open')) {
+                close();
+            }
+        });
+    }
+
     /* --- Header shadow on scroll --- */
     function initHeaderScroll() {
         var header = document.querySelector('.site-header');
@@ -427,6 +467,7 @@
         initQtyValidation();
         initDeleteConfirm();
         initPaymentCards();
+        initProductLightbox();
         initGridStagger();
 
         // Expose showToast globally for manual use

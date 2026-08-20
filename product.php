@@ -35,7 +35,12 @@ if (!$product) {
             Back to Catalog
         </a>
         <div class="product-image-frame">
-            <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['title']) ?>" class="product-detail-image">
+            <button type="button" class="product-image-zoom" data-lightbox-open
+                data-image="<?= htmlspecialchars($product['image_url']) ?>"
+                data-title="<?= htmlspecialchars($product['title']) ?>"
+                aria-label="View <?= htmlspecialchars($product['title']) ?> enlarged">
+                <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['title']) ?>" class="product-detail-image">
+            </button>
         </div>
     </div>
     <div class="product-info">
@@ -72,6 +77,14 @@ if (!$product) {
             <input type="hidden" name="id" value="<?= htmlspecialchars($product['id']) ?>">
             <button type="submit" class="btn btn-primary btn-lg btn-block" <?= $in_stock ? '' : 'disabled' ?>>Buy Now</button>
         </form>
+    </div>
+</div>
+
+<div class="lightbox" id="product-lightbox" role="dialog" aria-modal="true" aria-hidden="true">
+    <button type="button" class="lightbox-close" data-lightbox-close aria-label="Close">&#10005;</button>
+    <div class="lightbox-content">
+        <img src="" alt="" class="lightbox-image">
+        <p class="lightbox-caption"></p>
     </div>
 </div>
 

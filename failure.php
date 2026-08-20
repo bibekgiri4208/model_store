@@ -7,8 +7,28 @@ if (isset($_GET['data'])) {
     $response = json_decode($json_data, true);
 
     if (isset($response['transaction_uuid'])) {
+        $transaction_uuid = $response['transaction_uuid'];
+
+        // Fetch the pending order
+        $order_stmt = $pdo->prepare("SELECT * FROM orders WHERE transaction_uuid = ?");
+        $order_stmt->execute([$transaction_uuid]);
+        $order = $order_stmt->fetch();
+
+        if ($order) {
+            // Restore stock for each item in the order
+            $items_stmt = $pdo->prepare("SELECT product_id, quantity FROM order_items WHERE order_id = ?");
+            $items_stmt->execute([$order['id']]);
+            $items = $items_stmt->fetchAll();
+
+            $restore_stmt = $pdo->prepare("UPDATE products SET stock = stock + ? WHERE id = ?");
+            foreach ($items as $item) {
+                $restore_stmt->execute([$item['quantity'], $item['product_id']]);
+            }
+        }
+
+        // Mark the order payment as failed
         $stmt = $pdo->prepare("UPDATE orders SET payment_status = 'failed' WHERE transaction_uuid = ?");
-        $stmt->execute([$response['transaction_uuid']]);
+        $stmt->execute([$transaction_uuid]);
     }
 }
 ?>

@@ -128,6 +128,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
                 ]);
             }
 
+            // Verify stock availability and decrement it for each item
+            $stock_check = $pdo->prepare("SELECT stock FROM products WHERE id = ? FOR UPDATE");
+            $stock_stmt = $pdo->prepare("UPDATE products SET stock = stock - ? WHERE id = ?");
+            foreach ($items_to_checkout as $item) {
+                $stock_check->execute([$item['product_id']]);
+                $available = (int)$stock_check->fetchColumn();
+                if ($available < (int)$item['quantity']) {
+                    throw new Exception("Insufficient stock for one or more items. Please adjust your cart.");
+                }
+                $stock_stmt->execute([$item['quantity'], $item['product_id']]);
+            }
+
             $pdo->commit();
 
             // Clear session cart
