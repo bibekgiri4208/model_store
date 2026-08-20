@@ -116,17 +116,23 @@ foreach ($_SESSION['cart'] as $item) {
             </div>
 
             <div class="cart-col-head">
+                <label class="cart-check-all" title="Select all items">
+                    <input type="checkbox" id="cart-check-all" checked>
+                </label>
                 <span>Product</span>
                 <span>Quantity</span>
                 <span>Subtotal</span>
                 <span></span>
             </div>
 
-            <div class="cart-list">
+            <div class="cart-list" id="cart-list">
                 <?php foreach ($_SESSION['cart'] as $id => $item):
                     $subtotal = $item['price'] * $item['quantity'];
                 ?>
                     <div class="cart-item">
+                        <label class="cart-item-check" title="Select this item">
+                            <input type="checkbox" class="cart-check" value="<?= $id ?>" checked>
+                        </label>
                         <div class="cart-item-info">
                             <a href="product.php?id=<?= $id ?>" class="cart-item-thumb">
                                 <img src="<?= htmlspecialchars($item['image_url']) ?>" alt="<?= htmlspecialchars($item['title']) ?>">
@@ -189,14 +195,12 @@ foreach ($_SESSION['cart'] as $item) {
 
             <p class="summary-note">Free shipping on all orders. Pay with eSewa or Cash on Delivery.</p>
 
-            <?php
-                $cart_keys = array_keys($_SESSION['cart']);
-                $first_product_id = reset($cart_keys);
-            ?>
-            <form action="checkout.php" method="GET">
-                <input type="hidden" name="id" value="<?= $first_product_id ?>">
+            <form action="checkout.php" method="GET" id="checkout-form">
+                <?php foreach ($_SESSION['cart'] as $id => $item): ?>
+                    <input type="hidden" name="ids[]" value="<?= $id ?>" class="checkout-slot" data-product-id="<?= $id ?>">
+                <?php endforeach; ?>
                 <button type="submit" class="btn btn-primary btn-lg btn-block btn-checkout">
-                    Proceed to Checkout
+                    Proceed to Checkout (<span id="checkout-count"><?= count($_SESSION['cart']) ?></span>)
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         <polyline points="12 5 19 12 12 19"></polyline>

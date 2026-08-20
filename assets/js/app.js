@@ -417,6 +417,60 @@
         });
     }
 
+    /* --- Cart item selection for checkout --- */
+    function initCartSelection() {
+        var form = document.getElementById('checkout-form');
+        var list = document.getElementById('cart-list');
+        if (!form || !list) return;
+
+        var checkAll = document.getElementById('cart-check-all');
+        var checks = list.querySelectorAll('.cart-check');
+        var countEl = document.getElementById('checkout-count');
+
+        function sync() {
+            var selected = 0;
+            checks.forEach(function(chk) {
+                var row = chk.closest('.cart-item');
+                var slot = form.querySelector('.checkout-slot[data-product-id="' + chk.value + '"]');
+                if (chk.checked) {
+                    if (slot) slot.disabled = false;
+                    if (row) row.classList.add('checked');
+                    selected++;
+                } else {
+                    if (slot) slot.disabled = true;
+                    if (row) row.classList.remove('checked');
+                }
+            });
+            if (checkAll) {
+                checkAll.checked = checks.length > 0 && selected === checks.length;
+                checkAll.indeterminate = selected > 0 && selected < checks.length;
+            }
+            if (countEl) countEl.textContent = selected;
+        }
+
+        checks.forEach(function(chk) {
+            chk.addEventListener('change', sync);
+        });
+
+        if (checkAll) {
+            checkAll.addEventListener('change', function() {
+                checks.forEach(function(chk) {
+                    chk.checked = checkAll.checked;
+                });
+                sync();
+            });
+        }
+
+        form.addEventListener('submit', function(e) {
+            if (list.querySelectorAll('.cart-check:checked').length === 0) {
+                e.preventDefault();
+                showToast('Please select at least one item to checkout.', 'error');
+            }
+        });
+
+        sync();
+    }
+
     /* --- Header shadow on scroll --- */
     function initHeaderScroll() {
         var header = document.querySelector('.site-header');
@@ -468,6 +522,7 @@
         initDeleteConfirm();
         initPaymentCards();
         initProductLightbox();
+        initCartSelection();
         initGridStagger();
 
         // Expose showToast globally for manual use

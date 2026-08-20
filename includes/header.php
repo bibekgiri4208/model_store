@@ -54,11 +54,7 @@ if (isset($pdo)) {
 <header class="site-header">
     <div class="header-inner">
         <a href="<?= $base_path ?>index.php" class="brand-logo">
-            <span class="brand-mark" aria-hidden="true">J</span>
-            <span class="brand-text">
-                Jester
-                <span class="brand-sub">Scale Models</span>
-            </span>
+            <img src="<?= $base_path ?>assets/logo/logo.png" alt="Jester Scale Models" class="brand-img">
         </a>
 
         <button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle color theme">
@@ -129,7 +125,7 @@ if (isset($pdo)) {
             <span class="nav-divider"></span>
 
             <?php if (isset($_SESSION['user_id'])): ?>
-                <a href="<?= $base_path ?>my-orders.php" class="nav-user <?= $current_page === 'my-orders.php' ? 'active' : '' ?>">
+                <a href="<?= $base_path ?>profile.php" class="nav-user <?= $current_page === 'profile.php' ? 'active' : '' ?>">
                     <span class="nav-avatar" aria-hidden="true"><?= strtoupper(substr(trim($_SESSION['full_name'] ?? 'U'), 0, 1)) ?></span>
                     <span class="nav-user-name"><?= htmlspecialchars(explode(' ', trim($_SESSION['full_name'] ?? 'User'))[0]) ?></span>
                 </a>

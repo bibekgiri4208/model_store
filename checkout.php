@@ -16,11 +16,13 @@ if (!isset($_SESSION['cart'])) {
     $_SESSION['cart'] = [];
 }
 
-// Check for single product checkout OR multi-item cart checkout
-$product_id = intval($_REQUEST['id'] ?? $_POST['product_id'] ?? 0);
+// Check for selected-items checkout OR single product checkout OR whole cart
+$product_id   = intval($_REQUEST['id'] ?? $_POST['product_id'] ?? 0);
+$selected_ids = isset($_REQUEST['ids']) ? (array)$_REQUEST['ids'] : [];
+$has_selection = array_key_exists('ids', $_REQUEST);
 $cart_items = $_SESSION['cart'];
 
-if ($product_id <= 0 && empty($cart_items)) {
+if ($product_id <= 0 && empty($cart_items) && !$has_selection) {
     header('Location: index.php');
     exit;
 }
@@ -29,7 +31,7 @@ if ($product_id <= 0 && empty($cart_items)) {
 $items_to_checkout = [];
 $grand_total = 0.0;
 
-if ($product_id > 0) {
+if ($product_id > 0 && !$has_selection) {
     // Single product direct checkout flow
     $stmt = $pdo->prepare("SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.id = ?");
     $stmt->execute([$product_id]);
@@ -48,6 +50,37 @@ if ($product_id > 0) {
         'image_url'  => $product['image_url']
     ];
     $grand_total = (float)$product['price'];
+} elseif ($has_selection) {
+    // Checkout only the cart items the user selected
+    foreach ($selected_ids as $sel_id) {
+        $sel_id = intval($sel_id);
+        if ($sel_id <= 0 || !isset($cart_items[$sel_id])) continue;
+
+        $item = $cart_items[$sel_id];
+        if (!is_array($item)) {
+            $stmt = $pdo->prepare("SELECT * FROM products WHERE id = ?");
+            $stmt->execute([$sel_id]);
+            $p = $stmt->fetch();
+            if (!$p) continue;
+            $item = [
+                'product_id' => $p['id'],
+                'title'      => $p['title'],
+                'price'      => (float)$p['price'],
+                'quantity'   => 1,
+                'image_url'  => $p['image_url']
+            ];
+        } else {
+            $item['product_id'] = $item['id'] ?? $sel_id;
+        }
+
+        $items_to_checkout[] = $item;
+        $grand_total += $item['price'] * $item['quantity'];
+    }
+
+    if (empty($items_to_checkout)) {
+        header('Location: cart.php');
+        exit;
+    }
 } else {
     // Session cart checkout flow
     foreach ($cart_items as $id => $item) {
